@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Distancia</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;500;600&family=Nunito:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+
+<style>
+/* =========================================================================
+   DISTANCIA — Novela visual · Japón feudal
+   Paleta y tipografía base
+   ========================================================================= */
+:root{
+  --bg:#0D0D1A;
+  --lila:#B8A9D9;
+  --melocoton:#E8C4A0;
+  --texto:#F0EDE8;
+  --box:rgba(13,13,26,0.85);
+  --serif:'Noto Serif JP', serif;
+  --body:'Nunito', sans-serif;
+}
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body{ height:100%; background:#05050c; font-family:var(--body); color:var(--texto); overscroll-behavior:none; }
+body{ display:flex; align-items:center; justify-content:center; overflow:hidden; }
+
+#app{
+  position:relative;
+  width:min(100%, 430px);
+  height:100dvh; height:100vh;
+  overflow:hidden;
+  background:var(--bg);
+  user-select:none; -webkit-user-select:none;
+  box-shadow:0 0 80px rgba(0,0,0,0.6);
+  cursor:pointer;
+}
+
+/* =========================================================================
+   ESCENARIO — dos capas con crossfade
+   ========================================================================= */
+.stage{ position:absolute; inset:0; }
+.bg-layer{ position:absolute; inset:0; opacity:0; transition:opacity 640ms ease; }
+.bg-layer.visible{ opacity:1; }
+
+.bg-fill{ position:absolute; inset:-7%; will-change:transform; transition:transform 1000ms cubic-bezier(.22,.61,.36,1); }
+.bg-fill svg{ width:100%; height:100%; display:block; }
+.chars{ position:absolute; inset:0; will-change:transform; transition:transform 1000ms cubic-bezier(.22,.61,.36,1); }
+
+/* ---- iluminación / mood (sobre fondo y personajes) ---- */
+.bg-tint{ position:absolute; inset:0; pointer-events:none; }
+.bg-tint.amanecer{ background:linear-gradient(160deg, rgba(255,196,180,.22), rgba(255,170,150,.05)); mix-blend-mode:soft-light; }
+.bg-tint.dia{ background:linear-gradient(180deg, rgba(255,250,235,.10), transparent 60%); }
+.bg-tint.tarde{ background:linear-gradient(160deg, rgba(255,200,120,.30), rgba(255,150,90,.10)); mix-blend-mode:soft-light; }
+.bg-tint.atardecer{ background:linear-gradient(160deg, rgba(255,140,90,.34), rgba(120,70,120,.22)); mix-blend-mode:soft-light; }
+.bg-tint.noche{ background:linear-gradient(180deg, rgba(22,28,64,.50), rgba(10,12,32,.60)); }
+.bg-tint.noche::after{ content:''; position:absolute; inset:0; box-shadow:inset 0 0 160px 30px rgba(5,6,18,0.6); }
+.bg-tint.nublado{ background:rgba(150,156,168,.32); }
+.bg-tint.otono{ background:linear-gradient(160deg, rgba(220,140,70,.26), rgba(180,110,70,.10)); mix-blend-mode:soft-light; }
+.bg-tint.invierno{ background:linear-gradient(180deg, rgba(180,200,220,.22), rgba(150,170,200,.12)); }
+
+/* =========================================================================
+   PERSONAJES
+   ========================================================================= */
+.character{ position:absolute; bottom:34%; width:60%; max-width:250px; }
+.character.center{ left:50%; transform:translateX(-50%); }
+.character.left{ left:7%; }
+.character.right{ right:7%; }
+.character.dim{ opacity:.5; filter:blur(1.4px) saturate(.78) brightness(.92); }
+.char-inner{ transform-origin:50% 100%; }
+.char-inner svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 16px 34px rgba(0,0,0,0.4)); }
+@keyframes breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.014); } }
+.char-inner.breathe{ animation:breathe 4.2s ease-in-out infinite; }
+
+/* ---- perro (elevado para asomar sobre la caja de diálogo) ---- */
+.dog{ position:absolute; bottom:35.5%; width:19%; max-width:112px; z-index:4; }
+.dog.center{ left:50%; transform:translateX(-50%); }
+.dog.left{ left:14%; }
+.dog.right{ right:14%; }
+.dog .char-inner svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 8px 16px rgba(0,0,0,0.4)); }
+
+/* ---- props (objetos: grulla, caja, nota) ---- */
+.prop{ position:absolute; left:50%; bottom:42%; transform:translateX(-50%); width:38%; max-width:240px; z-index:3; }
+.prop svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 14px 26px rgba(0,0,0,0.34)); }
+@keyframes floatProp{ 0%,100%{ transform:translate(-50%, 0); } 50%{ transform:translate(-50%, -7px); } }
+.prop{ animation:floatProp 5s ease-in-out infinite; }
+
+/* =========================================================================
+   PARTÍCULAS DE SAKURA
+   ========================================================================= */
+.particles{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:6; }
+.petal{ position:absolute; top:-8%; opacity:0; will-change:transform,opacity; animation:fall linear infinite; }
+.petal svg{ display:block; width:100%; height:100%; }
+@keyframes fall{
+  0%{ transform:translate(0,-12vh) rotate(0deg); opacity:0; }
+  12%{ opacity:var(--op,0.5); }
+  88%{ opacity:var(--op,0.5); }
+  100%{ transform:translate(var(--dx,40px), 112vh) rotate(420deg); opacity:0; }
+}
+
+/* =========================================================================
+   CAJA DE DIÁLOGO
+   ========================================================================= */
+#dialogue{
+  position:absolute; left:0; right:0; bottom:0;
+  height:35%; min-height:228px;
+  background:var(--box);
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  border-top:1px solid rgba(184,169,217,0.3);
+  border-radius:20px 20px 0 0;
+  padding:24px 28px calc(24px + env(safe-area-inset-bottom)) 28px;
+  display:flex; flex-direction:column;
+  opacity:0; transform:translateY(10px);
+  transition:opacity 500ms ease, transform 500ms ease;
+  z-index:10;
+}
+#dialogue.show{ opacity:1; transform:translateY(0); }
+.speaker{
+  font-family:var(--serif); font-weight:500; font-size:18px; letter-spacing:.04em;
+  color:var(--lila); margin-bottom:10px; min-height:22px;
+}
+.note{
+  font-family:var(--body); font-style:italic; font-size:13.5px; letter-spacing:.02em;
+  color:rgba(184,169,217,0.7); margin-bottom:8px; min-height:0;
+}
+.dtext{ font-family:var(--body); font-size:21px; line-height:1.6; color:var(--texto); flex:1; text-wrap:pretty; }
+#dialogue.narrador .dtext{ font-style:italic; color:var(--lila); text-align:center; display:flex; align-items:center; justify-content:center; font-size:20px; }
+#dialogue.narrador .speaker, #dialogue.narrador .note{ display:none; }
+
+/* NARRADOR ESPECIAL — ancla emocional / eco entre capítulos */
+#dialogue.special .speaker, #dialogue.special .note{ display:none; }
+#dialogue.special .dtext{
+  font-family:var(--serif); font-weight:300; font-style:italic;
+  color:var(--melocoton); text-align:center;
+  display:flex; align-items:center; justify-content:center;
+  font-size:23px; line-height:1.5; letter-spacing:.015em;
+  text-shadow:0 0 28px rgba(232,196,160,0.28);
+}
+
+/* compases / silencios: tenues, centrados, sin voz — cada tipo con su aire */
+#dialogue.beat .speaker, #dialogue.beat .note{ display:none; }
+#dialogue.beat .dtext{ text-align:center; display:flex; align-items:center; justify-content:center; font-style:italic; }
+#dialogue.beat.comodo   .dtext{ font-size:16px; opacity:.52; letter-spacing:.12em; color:var(--lila); }
+#dialogue.beat.largo    .dtext{ font-size:15px; opacity:.40; letter-spacing:.26em; color:var(--lila); }
+#dialogue.beat.incomodo .dtext{ font-size:15px; opacity:.46; letter-spacing:.16em; color:#9aa0b4; }
+#dialogue.beat.pausa    .dtext{ font-size:15px; opacity:.5; letter-spacing:.22em; color:var(--melocoton); }
+
+.caret{ display:inline-block; width:2px; height:1.05em; margin-left:1px; background:currentColor; vertical-align:-2px; opacity:.7; animation:blinkCaret .9s steps(1) infinite; }
+@keyframes blinkCaret{ 50%{ opacity:0; } }
+.caret.hidden{ display:none; }
+
+.continue{ position:absolute; right:22px; bottom:16px; font-size:18px; color:var(--lila); opacity:0; transition:opacity 400ms ease; animation:bob 1.3s ease-in-out infinite; }
+.continue.show{ opacity:.9; }
+@keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(4px); } }
+
+/* =========================================================================
+   TARJETA DE CAPÍTULO
+   ========================================================================= */
+#chapter-card{
+  position:absolute; inset:0; z-index:30;
+  background:rgba(7,7,16,0.96);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:0 40px;
+  opacity:0; visibility:hidden; transition:opacity 700ms ease;
+}
+#chapter-card.show{ opacity:1; visibility:visible; }
+.cc-num{ font-family:var(--serif); font-weight:300; font-size:15px; letter-spacing:.32em; color:var(--melocoton); margin-bottom:22px; text-transform:uppercase; }
+.cc-name{ font-family:var(--serif); font-weight:400; font-size:34px; line-height:1.3; color:var(--texto); }
+.cc-rule{ width:40px; height:1px; background:var(--lila); opacity:.5; margin:24px 0; }
+.cc-intro{ display:flex; flex-direction:column; gap:11px; }
+.cc-intro .ci-line{ font-family:var(--body); font-weight:300; font-size:15.5px; letter-spacing:.05em; color:var(--lila); opacity:.85; }
+.cc-intro .ci-line:first-child{ color:var(--melocoton); letter-spacing:.14em; text-transform:uppercase; font-size:13px; opacity:.9; }
+
+/* ---- interludio en negro ---- */
+#break-screen{ position:absolute; inset:0; z-index:32; background:#050509; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 40px; opacity:0; visibility:hidden; transition:opacity 800ms ease; }
+#break-screen.show{ opacity:1; visibility:visible; }
+#break-screen .break-text{ display:flex; flex-direction:column; gap:14px; }
+#break-screen .bc-line{ font-family:var(--serif); font-weight:300; font-style:italic; font-size:22px; letter-spacing:.04em; color:var(--lila); }
+#break-screen .bc-line:only-child{ font-size:27px; color:var(--texto); }
+
+/* =========================================================================
+   PANTALLA DE TÍTULO
+   ========================================================================= */
+#title-screen{ position:absolute; inset:0; z-index:40; overflow:hidden; transition:opacity 800ms ease; }
+#title-screen.gone{ opacity:0; pointer-events:none; }
+.sky-fill{ position:absolute; inset:0; background:linear-gradient(180deg,#0b0f28 0%, #161a40 48%, #2a2350 100%); }
+.sky-fill svg{ position:absolute; inset:0; width:100%; height:100%; }
+.moon{
+  position:absolute; top:13%; left:50%; transform:translateX(-50%);
+  width:200px; height:200px; border-radius:50%;
+  background:radial-gradient(circle at 42% 40%, #fbf7ee 0%, #ece6f2 58%, #cfc6e0 100%);
+  box-shadow:0 0 80px 24px rgba(232,224,242,0.35), 0 0 160px 60px rgba(184,169,217,0.18);
+  animation:moonBreath 7s ease-in-out infinite;
+}
+.moon::before, .moon::after{ content:''; position:absolute; border-radius:50%; background:rgba(190,182,210,0.45); }
+.moon::before{ width:34px; height:34px; top:42px; left:54px; }
+.moon::after{ width:22px; height:22px; top:110px; left:120px; box-shadow:40px -30px 0 -4px rgba(190,182,210,0.4); }
+@keyframes moonBreath{ 0%,100%{ transform:translateX(-50%) scale(1); opacity:.94; } 50%{ transform:translateX(-50%) scale(1.035); opacity:1; } }
+
+.title-wrap{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:60px; }
+.kanji{ font-family:var(--serif); font-weight:300; font-size:96px; letter-spacing:.08em; color:var(--texto); text-shadow:0 6px 40px rgba(184,169,217,0.35); line-height:1; }
+.romaji{ font-family:var(--serif); font-weight:300; font-size:30px; letter-spacing:.42em; color:var(--lila); margin-top:18px; padding-left:.42em; }
+.t-rule{ width:46px; height:1px; background:var(--lila); opacity:.5; margin:26px 0 18px; }
+.t-sub{ font-family:var(--body); font-weight:300; font-size:14.5px; letter-spacing:.06em; color:rgba(240,237,232,0.82); opacity:0; transition:opacity 1400ms ease; }
+.t-setting{ font-family:var(--serif); font-weight:300; font-size:12.5px; letter-spacing:.34em; text-transform:uppercase; color:var(--melocoton); opacity:0; margin-bottom:28px; transition:opacity 1600ms ease; }
+.t-setting.show{ opacity:.78; }
+.t-sub.show{ opacity:1; }
+.t-begin{
+  margin-top:46px; font-family:var(--serif); font-weight:400; font-size:16px; letter-spacing:.18em;
+  color:var(--texto); background:transparent; border:1px solid rgba(184,169,217,0.45); border-radius:40px;
+  padding:13px 42px; cursor:pointer; opacity:0; transition:opacity 1400ms ease, background .4s ease, border-color .4s ease;
+  animation:pulseBtn 3.6s ease-in-out infinite;
+}
+.t-begin.show{ opacity:1; }
+.t-begin:hover{ border-color:var(--lila); background:rgba(184,169,217,0.08); }
+@keyframes pulseBtn{ 0%,100%{ box-shadow:0 0 0 0 rgba(184,169,217,0); } 50%{ box-shadow:0 0 26px 0 rgba(184,169,217,0.18); } }
+.t-resume{ margin-top:18px; font-family:var(--body); font-size:13px; letter-spacing:.05em; color:var(--lila); opacity:0; cursor:pointer; background:none; border:none; text-decoration:underline; text-underline-offset:3px; transition:opacity 1400ms ease; }
+.t-resume.show{ opacity:.7; }
+
+/* =========================================================================
+   FIN
+   ========================================================================= */
+#end-screen{
+  position:absolute; inset:0; z-index:35; background:#05050c;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 40px;
+  opacity:0; visibility:hidden; transition:opacity 1400ms ease;
+}
+#end-screen.show{ opacity:1; visibility:visible; }
+.end-kanji{ font-family:var(--serif); font-weight:200; font-size:56px; color:var(--texto); opacity:0; transition:opacity 1600ms ease; }
+.end-kanji.show{ opacity:.92; }
+.end-sign{ font-family:var(--serif); font-weight:400; font-size:16px; letter-spacing:.2em; color:var(--lila); margin-top:26px; opacity:0; transition:opacity 1400ms ease; }
+.end-sign.show{ opacity:.85; }
+.end-again{ margin-top:48px; font-family:var(--body); font-size:13px; letter-spacing:.08em; color:var(--lila); background:none; border:1px solid rgba(184,169,217,0.4); border-radius:30px; padding:11px 30px; cursor:pointer; opacity:0; transition:opacity 1400ms ease; }
+.end-again.show{ opacity:.8; }
+
+/* =========================================================================
+   BOTÓN MUTE
+   ========================================================================= */
+#mute{
+  position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px;
+  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+  background:rgba(13,13,26,0.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  border:1px solid rgba(184,169,217,0.2); border-radius:50%; color:var(--lila);
+  cursor:pointer; z-index:50; opacity:0; transition:opacity .5s ease, background .3s ease;
+}
+#mute.show{ opacity:.85; }
+#mute:hover{ background:rgba(184,169,217,0.12); }
+#mute svg{ width:18px; height:18px; display:block; }
+
+/* =========================================================================
+   REDUCE MOTION
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce){
+  .petal{ display:none; }
+  .char-inner.breathe{ animation:none; }
+  .moon{ animation:none; }
+  .t-begin{ animation:none; }
+  .continue{ animation:none; }
+  .bg-fill, .chars{ transition:none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== ESCENARIO ===================== -->
+  <div class="stage" id="stage">
+    <div class="bg-layer" id="layerA"></div>
+    <div class="bg-layer" id="layerB"></div>
+  </div>
+
+  <!-- ===================== PARTÍCULAS ===================== -->
+  <div class="particles" id="particles"></div>
+
+  <!-- ===================== CAJA DE DIÁLOGO ===================== -->
+  <div id="dialogue">
+    <div class="speaker" id="speaker"></div>
+    <div class="note" id="note"></div>
+    <div class="dtext" id="dtext"></div>
+    <div class="continue" id="continue">❯</div>
+  </div>
+
+  <!-- ===================== TARJETA DE CAPÍTULO ===================== -->
+  <div id="chapter-card">
+    <div class="cc-num" id="cc-num"></div>
+    <div class="cc-name" id="cc-name"></div>
+    <div class="cc-rule"></div>
+    <div class="cc-intro" id="cc-intro"></div>
+  </div>
+
+  <!-- ===================== INTERLUDIO ===================== -->
+  <div id="break-screen"><div class="break-text"></div></div>
+
+  <!-- ===================== FIN ===================== -->
+  <div id="end-screen">
+    <div class="end-kanji">終</div>
+    <div class="end-sign">— DISTANCIA</div>
+    <button class="end-again" id="end-again">Volver a empezar</button>
+  </div>
+
+  <!-- ===================== BOTÓN MUTE ===================== -->
+  <div id="mute" title="Silenciar / activar audio">
+    <svg id="mute-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a8.5 8.5 0 0 1 0 12"/>
+    </svg>
+  </div>
+
+  <!-- ===================== TÍTULO ===================== -->
+  <div id="title-screen">
+    <div class="sky-fill">
+      <svg viewBox="0 0 430 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <!-- estrellas -->
+        <g fill="#d7d0ee">
+          <circle cx="50" cy="120" r="1.4" opacity="0.8"/><circle cx="110" cy="70" r="1" opacity="0.5"/>
+          <circle cx="380" cy="90" r="1.3" opacity="0.7"/><circle cx="340" cy="180" r="1" opacity="0.5"/>
+          <circle cx="70" cy="240" r="1.1" opacity="0.6"/><circle cx="400" cy="260" r="1.2" opacity="0.6"/>
+          <circle cx="200" cy="60" r="1" opacity="0.5"/><circle cx="260" cy="120" r="1.1" opacity="0.6"/>
+        </g>
+        <!-- montañas lejanas -->
+        <path d="M0 560 L70 470 L150 555 L240 460 L320 550 L390 480 L430 555 L430 640 L0 640 Z" fill="#1c2150" opacity="0.85"/>
+        <path d="M0 610 L100 520 L200 600 L300 510 L400 595 L430 560 L430 720 L0 720 Z" fill="#2a2a58" opacity="0.9"/>
+        <!-- niebla baja -->
+        <rect x="0" y="640" width="430" height="120" fill="#3a3568" opacity="0.4"/>
+        <!-- pagoda silueta -->
+        <g fill="#0f1230" transform="translate(330 470)">
+          <rect x="-5" y="60" width="10" height="60"/>
+          <path d="M-30 60 L30 60 L20 44 L-20 44 Z"/>
+          <path d="M-25 44 L25 44 L16 30 L-16 30 Z"/>
+          <path d="M-19 30 L19 30 L11 16 L-11 16 Z"/>
+          <path d="M-13 16 L13 16 L7 2 L-7 2 Z"/>
+          <rect x="-2" y="-8" width="4" height="10"/>
+        </g>
+        <!-- suelo -->
+        <rect x="0" y="720" width="430" height="180" fill="#0c0f28"/>
+        <!-- cerezo silueta en flor -->
+        <g transform="translate(-10 560) scale(1.4)">
+          <path d="M30 120 q-6 -60 4 -96" stroke="#241b2e" stroke-width="7" fill="none"/>
+          <g fill="#5a4768" opacity="0.85"><circle cx="10" cy="14" r="26"/><circle cx="40" cy="2" r="30"/><circle cx="68" cy="20" r="26"/><circle cx="40" cy="22" r="26"/></g>
+        </g>
+      </svg>
+    </div>
+    <div class="moon"></div>
+    <div class="title-wrap">
+      <div class="t-setting" id="t-setting">Japón feudal · Primavera</div>
+      <div class="kanji">距離</div>
+      <div class="romaji">Distancia</div>
+      <div class="t-rule"></div>
+      <div class="t-sub" id="t-sub">Una historia que ya has vivido antes.</div>
+      <button class="t-begin" id="begin">COMENZAR</button>
+      <button class="t-resume" id="resume">continuar donde lo dejaste</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- arte y guión -->
+<script src="art.js"></script>
+<script src="story.js"></script>
+<script>
+/* =========================================================================
+   DISTANCIA — Motor
+   ========================================================================= */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SAVE_KEY = 'distancia_progress_v4';
+
+/* refs */
+const app       = document.getElementById('app');
+const layers    = [document.getElementById('layerA'), document.getElementById('layerB')];
+const dialogue  = document.getElementById('dialogue');
+const speakerEl = document.getElementById('speaker');
+const noteEl    = document.getElementById('note');
+const dtextEl   = document.getElementById('dtext');
+const continueEl= document.getElementById('continue');
+const chapterCard = document.getElementById('chapter-card');
+const titleScreen = document.getElementById('title-screen');
+const endScreen   = document.getElementById('end-screen');
+const muteBtn   = document.getElementById('mute');
+
+let cur = { p:0, l:0 };      // página / línea actual
+let activeLayer = 0;
+let typing = false, typeTimer = null;
+let curText = '';
+let started = false, busy = false;
+
+/* =========================================================================
+   PARTÍCULAS — varían por estación (pétalos / motas / hojas / nieve)
+   ========================================================================= */
+let currentSeason = null;
+function particleSVG(season){
+  if(season==='otono')    return `<svg viewBox="0 0 20 20"><path d="M10 2 C12 7 18 8 18 8 C14 10 13 16 10 18 C7 16 6 10 2 8 C2 8 8 7 10 2 Z" fill="#d9833a" opacity="0.92"/></svg>`;
+  if(season==='invierno') return `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="4.5" fill="#eef2f6" opacity="0.92"/></svg>`;
+  if(season==='verano')   return `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.6" fill="#fbe7bf" opacity="0.9"/></svg>`;
+  return `<svg viewBox="0 0 20 20"><path d="M10 1 C13 4 17 6 17 11 C17 15 13 18 10 19 C7 18 3 15 3 11 C3 6 7 4 10 1 Z" fill="#e8c9d8" opacity="0.9"/></svg>`;
+}
+function buildParticles(season){
+  currentSeason = season;
+  const cont = document.getElementById('particles');
+  cont.innerHTML = '';
+  if(reduceMotion) return;
+  const svg = particleSVG(season);
+  const n = season==='invierno' ? 15 : 11;
+  for(let i=0;i<n;i++){
+    const p = document.createElement('div'); p.className='petal';
+    const size = 8 + Math.random()*11;
+    p.style.left = (Math.random()*100)+'%';
+    p.style.width = size+'px'; p.style.height = size+'px';
+    p.style.setProperty('--dx', ((season==='invierno'?10:20) + Math.random()*70)+'px');
+    p.style.setProperty('--op', (0.3 + Math.random()*0.3).toFixed(2));
+    const dur = (season==='invierno'?14:12) + Math.random()*10;
+    p.style.animationDuration = dur+'s';
+    p.style.animationDelay = (-Math.random()*dur)+'s';
+    p.innerHTML = svg; cont.appendChild(p);
+  }
+}
+buildParticles('primavera');
+
+/* =========================================================================
+   AUDIO — pad ambient (Am) con LFO
+   ========================================================================= */
+let audioCtx=null, padGain=null, audioStarted=false, audioMuted=false;
+function initAudio(){
+  if(audioStarted) return; audioStarted=true;
+  try{
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    padGain = audioCtx.createGain(); padGain.gain.value=0.05; padGain.connect(audioCtx.destination);
+    const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900; lp.Q.value=0.4; lp.connect(padGain);
+    [[220,-6,'sine',1],[329.63,4,'sine',1],[440,-3,'triangle',0.5]].forEach(([f,d,type,g])=>{
+      const o=audioCtx.createOscillator(); o.type=type; o.frequency.value=f; o.detune.value=d;
+      const og=audioCtx.createGain(); og.gain.value=g; o.connect(og); og.connect(lp); o.start();
+    });
+    const lfo=audioCtx.createOscillator(); lfo.frequency.value=0.05;
+    const lg=audioCtx.createGain(); lg.gain.value=0.022; lfo.connect(lg); lg.connect(padGain.gain); lfo.start();
+  }catch(e){}
+}
+
+/* =========================================================================
+   VOZ — Web Speech API (es-MX)
+   ========================================================================= */
+let voicePref=null, speechMuted=false;
+function pickVoice(){
+  const v = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if(!v.length) return;
+  voicePref =
+    v.find(x=>/es/i.test(x.lang) && /paulina/i.test(x.name)) ||
+    v.find(x=>/es/i.test(x.lang) && /female|mujer/i.test(x.name)) ||
+    v.find(x=>/google espa/i.test(x.name)) ||
+    v.find(x=>/es-MX/i.test(x.lang)) ||
+    v.find(x=>/^es/i.test(x.lang)) || null;
+}
+if(window.speechSynthesis){ pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text){
+  if(speechMuted || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang='es-MX'; if(voicePref) u.voice=voicePref;
+  u.rate=0.85; u.pitch=1.05; u.volume=0.9;
+  window.speechSynthesis.speak(u);
+}
+function stopSpeak(){ if(window.speechSynthesis) window.speechSynthesis.cancel(); }
+
+/* =========================================================================
+   RENDER DE ESCENA (crossfade A/B)
+   ========================================================================= */
+function charArtKey(c){
+  if(c.sit){ if(c.key==='ella') return 'ellaSit'; if(c.key==='el') return 'elSit'; }
+  return c.key;
+}
+function charHTML(c){
+  const pos = c.pos||'center';
+  let style = '';
+  if(c.width)  style += `width:${c.width};`;
+  if(c.bottom) style += `bottom:${c.bottom};`;
+  if(c.sit && !c.bottom) style += 'bottom:30%;';
+  if(c.dx){
+    style += (pos==='center')
+      ? `transform:translateX(calc(-50% + ${c.dx}px));`
+      : `transform:translateX(${c.dx}px);`;
+  }
+  const dim = c.dim ? ' dim' : '';
+  const breathe = reduceMotion ? '' : ' breathe';
+  return `<div class="character ${pos}${dim}" style="${style}">
+            <div class="char-inner${breathe}">${CHARACTERS[charArtKey(c)]||''}</div>
+          </div>`;
+}
+function dogHTML(d){
+  if(!d) return '';
+  const o = (d===true) ? {} : d;
+  const pos = o.pos||'center';
+  let style = '';
+  if(o.dx){
+    style += (pos==='center')
+      ? `transform:translateX(calc(-50% + ${o.dx}px));`
+      : `transform:translateX(${o.dx}px);`;
+  }
+  const breathe = reduceMotion ? '' : ' breathe';
+  return `<div class="dog ${pos}" style="${style}"><div class="char-inner${breathe}">${CHARACTERS.perro}</div></div>`;
+}
+function propHTML(name){
+  if(!name || !PROPS[name]) return '';
+  return `<div class="prop">${PROPS[name]}</div>`;
+}
+function skyFor(page){
+  if(page.light==='otono')    return SKY.otono;
+  if(page.light==='invierno') return SKY.invierno;
+  if(page.light==='dia' && page.season==='verano') return SKY.diaVerano;
+  return SKY[page.light] || SKY.dia;
+}
+function sceneHTML(page){
+  const bg = BACKGROUNDS[page.bg](skyFor(page), page.opts||{});
+  const chars = (page.chars||[]).map(charHTML).join('') + dogHTML(page.dog) + propHTML(page.prop);
+  const tintClass = (page.light==='otono'||page.light==='invierno') ? page.light : page.light;
+  return `<div class="bg-fill">${bg}</div>
+          <div class="chars">${chars}</div>
+          <div class="bg-tint ${tintClass}"></div>`;
+}
+function renderPage(page){
+  if(page.season && page.season!==currentSeason) buildParticles(page.season);
+  return new Promise(resolve=>{
+    const incoming = layers[1-activeLayer];
+    incoming.innerHTML = sceneHTML(page);
+    void incoming.offsetWidth;              // reflow para asegurar el fade
+    incoming.classList.add('visible');
+    layers[activeLayer].classList.remove('visible');
+    activeLayer = 1-activeLayer;
+    setTimeout(()=> resolve(), reduceMotion ? 0 : 660);
+  });
+}
+
+/* =========================================================================
+   TARJETA DE CAPÍTULO
+   ========================================================================= */
+function showChapterCard(page){
+  document.getElementById('cc-num').textContent  = page.chapter;
+  document.getElementById('cc-name').textContent = page.chapterName;
+  const introBox = document.getElementById('cc-intro');
+  introBox.innerHTML = (page.intro||[]).map(l=>`<div class="ci-line">${l}</div>`).join('');
+  return new Promise(resolve=>{
+    chapterCard.classList.add('show');
+    const hold = reduceMotion ? 800 : (2600 + (page.intro? page.intro.length*350 : 0));
+    setTimeout(()=>{
+      chapterCard.classList.remove('show');
+      setTimeout(resolve, reduceMotion ? 0 : 700);
+    }, hold);
+  });
+}
+
+/* =========================================================================
+   DIÁLOGO + TYPEWRITER
+   ========================================================================= */
+function beatGlyph(k){
+  if(k==='pausa')    return '✿';
+  if(k==='largo')    return '—  —';
+  if(k==='incomodo') return '· · ·';
+  return '— —';
+}
+function showLine(){
+  const line = STORY[cur.p].lines[cur.l];
+  const isNarr    = line.s === 'narrador';
+  const isSpecial = line.s === 'special';
+  const isBeat    = line.s === 'beat';
+  const isVoice   = isNarr || isSpecial || (!isBeat);   // todo menos beats lleva voz
+
+  dialogue.classList.toggle('narrador', isNarr);
+  dialogue.classList.toggle('special', isSpecial);
+  dialogue.classList.toggle('beat', isBeat);
+  dialogue.classList.remove('comodo','largo','incomodo','pausa');
+  if(isBeat && line.k) dialogue.classList.add(line.k);
+
+  const showName = (!isNarr && !isSpecial && !isBeat);
+  speakerEl.textContent = showName ? line.s : '';
+  const showNote = (showName && line.note);
+  noteEl.textContent = showNote ? line.note : '';
+  noteEl.style.display = showNote ? 'block' : 'none';
+
+  const text = (isBeat && !line.t) ? beatGlyph(line.k) : line.t;
+  curText = text;
+
+  continueEl.classList.remove('show');
+  dialogue.classList.add('show');
+  typeText(dtextEl, text, ()=> continueEl.classList.add('show'));
+  if(isVoice && text) speak(text);
+  save();
+}
+function typeText(target, text, done){
+  clearInterval(typeTimer); typing=true; target.innerHTML='';
+  const caret=document.createElement('span'); caret.className='caret'; target.appendChild(caret);
+  if(reduceMotion){ caret.remove(); target.textContent=text; typing=false; done&&done(); return; }
+  let i=0;
+  typeTimer = setInterval(()=>{
+    if(i>=text.length){ clearInterval(typeTimer); typing=false; caret.classList.add('hidden'); done&&done(); return; }
+    caret.insertAdjacentText('beforebegin', text[i]); i++;
+  }, 42);
+}
+function finishTyping(){
+  clearInterval(typeTimer); typing=false;
+  dtextEl.textContent = curText;
+  continueEl.classList.add('show');
+}
+
+/* =========================================================================
+   AVANCE
+   ========================================================================= */
+async function advance(){
+  if(!started || busy) return;
+  if(typing){ finishTyping(); return; }
+  stopSpeak();
+
+  const page = STORY[cur.p];
+  if(cur.l < page.lines.length-1){
+    cur.l++; showLine(); return;
+  }
+  // fin de página → siguiente
+  if(cur.p < STORY.length-1){
+    busy = true;
+    const finished = STORY[cur.p];
+    cur.p++; cur.l=0;
+    const next = STORY[cur.p];
+    dialogue.classList.remove('show');
+    await wait(reduceMotion?0:360);
+    if(finished.breakText) await showBreak(finished.breakText);
+    if(next.chapter) await showChapterCard(next);
+    if(next.lead) await showBreak(next.lead);
+    await renderPage(next);
+    await wait(reduceMotion?0:120);
+    busy = false;
+    showLine();
+  } else {
+    runEnding();
+  }
+}
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* interludio / tarjeta de tiempo en negro (acepta string o array de líneas) */
+function showBreak(content){
+  const el = document.getElementById('break-screen');
+  const lines = Array.isArray(content) ? content : [content];
+  el.querySelector('.break-text').innerHTML = lines.map(l=>`<div class="bc-line">${l}</div>`).join('');
+  return new Promise(res=>{
+    el.classList.add('show');
+    const hold = reduceMotion ? 700 : (1500 + lines.length*550);
+    setTimeout(()=>{
+      el.classList.remove('show');
+      setTimeout(res, reduceMotion ? 0 : 800);
+    }, hold);
+  });
+}
+
+/* =========================================================================
+   PARALLAX
+   ========================================================================= */
+function applyParallax(cx, cy){
+  if(reduceMotion) return;
+  const r = app.getBoundingClientRect();
+  const nx = ((cx-r.left)/r.width - 0.5), ny = ((cy-r.top)/r.height - 0.5);
+  const layer = layers[activeLayer];
+  const fill = layer.querySelector('.bg-fill'), chars = layer.querySelector('.chars');
+  if(fill)  fill.style.transform  = `translate(${-nx*8}px, ${-ny*5}px)`;
+  if(chars) chars.style.transform = `translate(${-nx*16}px, ${-ny*8}px)`;
+}
+
+/* =========================================================================
+   FIN
+   ========================================================================= */
+function runEnding(){
+  stopSpeak();
+  dialogue.classList.remove('show');
+  layers.forEach(l=> l.classList.remove('visible'));
+  endScreen.classList.add('show');
+  clearSave();
+  setTimeout(()=> endScreen.querySelector('.end-kanji').classList.add('show'), 900);
+  setTimeout(()=> endScreen.querySelector('.end-sign').classList.add('show'), 2600);
+  setTimeout(()=> endScreen.querySelector('.end-again').classList.add('show'), 4200);
+}
+
+/* =========================================================================
+   GUARDADO
+   ========================================================================= */
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(cur)); }catch(e){} }
+function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+function loadSave(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s && Number.isInteger(s.p) && Number.isInteger(s.l) && s.p<STORY.length && s.l<STORY[s.p].lines.length) return s; }catch(e){} return null; }
+
+/* =========================================================================
+   ARRANQUE
+   ========================================================================= */
+async function beginStory(resume){
+  if(started) return; started=true;
+  initAudio();
+  if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(_){} }
+  titleScreen.classList.add('gone');
+  muteBtn.classList.add('show');
+
+  if(resume){ cur = resume; } else { cur = {p:0, l:0}; }
+  const page = STORY[cur.p];
+  // tarjeta de capítulo solo al iniciar el capítulo desde su 1ª línea
+  if(page.chapter && cur.l===0) await showChapterCard(page);
+  if(page.lead && cur.l===0) await showBreak(page.lead);
+  await renderPage(page);
+  await wait(reduceMotion?0:160);
+  showLine();
+}
+
+/* eventos */
+function onTap(e){
+  if(e.target.closest('#mute') || e.target.closest('#title-screen') || e.target.closest('#end-screen')) return;
+  if(e.type==='touchend') e.preventDefault();
+  applyParallax(
+    e.changedTouches? e.changedTouches[0].clientX : e.clientX,
+    e.changedTouches? e.changedTouches[0].clientY : e.clientY
+  );
+  advance();
+}
+app.addEventListener('click', onTap);
+app.addEventListener('touchend', onTap, {passive:false});
+
+muteBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  audioMuted=!audioMuted; speechMuted=audioMuted;
+  if(audioCtx){ audioMuted? audioCtx.suspend() : audioCtx.resume(); }
+  if(audioMuted) stopSpeak();
+  muteBtn.querySelector('svg').innerHTML = audioMuted
+    ? '<path d="M11 5 6 9H3v6h3l5 4z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>'
+    : '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a8.5 8.5 0 0 1 0 12"/>';
+});
+
+document.getElementById('begin').addEventListener('click', (e)=>{ e.stopPropagation(); clearSave(); beginStory(null); });
+document.getElementById('resume').addEventListener('click', (e)=>{ e.stopPropagation(); beginStory(loadSave()); });
+document.getElementById('end-again').addEventListener('click', (e)=>{ e.stopPropagation(); location.reload(); });
+
+/* mostrar "continuar" si hay progreso guardado */
+(function initTitle(){
+  const saved = loadSave();
+  const showSet  = ()=> document.getElementById('t-setting').classList.add('show');
+  const showSub  = ()=> document.getElementById('t-sub').classList.add('show');
+  const showBtn  = ()=>{ document.getElementById('begin').classList.add('show'); if(saved && (saved.p>0||saved.l>0)) document.getElementById('resume').classList.add('show'); };
+  if(reduceMotion){ showSet(); showSub(); showBtn(); }
+  else { setTimeout(showSet, 1400); setTimeout(showSub, 4000); setTimeout(showBtn, 5600); }
+})();
+</script>
+</body>
+</html>
