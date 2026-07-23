@@ -128,24 +128,8 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
 .dtext{ font-family:var(--body); font-size:21px; line-height:1.6; color:var(--texto); flex:1; text-wrap:pretty; }
 #dialogue.narrador .dtext{ font-style:italic; color:var(--lila); text-align:center; display:flex; align-items:center; justify-content:center; font-size:20px; }
 #dialogue.narrador .speaker, #dialogue.narrador .note{ display:none; }
-
-/* NARRADOR ESPECIAL — ancla emocional / eco entre capítulos */
-#dialogue.special .speaker, #dialogue.special .note{ display:none; }
-#dialogue.special .dtext{
-  font-family:var(--serif); font-weight:300; font-style:italic;
-  color:var(--melocoton); text-align:center;
-  display:flex; align-items:center; justify-content:center;
-  font-size:23px; line-height:1.5; letter-spacing:.015em;
-  text-shadow:0 0 28px rgba(232,196,160,0.28);
-}
-
-/* compases / silencios: tenues, centrados, sin voz — cada tipo con su aire */
-#dialogue.beat .speaker, #dialogue.beat .note{ display:none; }
-#dialogue.beat .dtext{ text-align:center; display:flex; align-items:center; justify-content:center; font-style:italic; }
-#dialogue.beat.comodo   .dtext{ font-size:16px; opacity:.52; letter-spacing:.12em; color:var(--lila); }
-#dialogue.beat.largo    .dtext{ font-size:15px; opacity:.40; letter-spacing:.26em; color:var(--lila); }
-#dialogue.beat.incomodo .dtext{ font-size:15px; opacity:.46; letter-spacing:.16em; color:#9aa0b4; }
-#dialogue.beat.pausa    .dtext{ font-size:15px; opacity:.5; letter-spacing:.22em; color:var(--melocoton); }
+/* compases (silencio, pausa, el río…): tenue, pequeño, sin voz */
+#dialogue.beat .dtext{ font-size:16px; opacity:.55; letter-spacing:.1em; font-style:italic; }
 
 .caret{ display:inline-block; width:2px; height:1.05em; margin-left:1px; background:currentColor; vertical-align:-2px; opacity:.7; animation:blinkCaret .9s steps(1) infinite; }
 @keyframes blinkCaret{ 50%{ opacity:0; } }
@@ -169,14 +153,15 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
 .cc-num{ font-family:var(--serif); font-weight:300; font-size:15px; letter-spacing:.32em; color:var(--melocoton); margin-bottom:22px; text-transform:uppercase; }
 .cc-name{ font-family:var(--serif); font-weight:400; font-size:34px; line-height:1.3; color:var(--texto); }
 .cc-rule{ width:40px; height:1px; background:var(--lila); opacity:.5; margin:24px 0; }
-.cc-intro{ display:flex; flex-direction:column; gap:11px; }
-.cc-intro .ci-line{ font-family:var(--body); font-weight:300; font-size:15.5px; letter-spacing:.05em; color:var(--lila); opacity:.85; }
-.cc-intro .ci-line:first-child{ color:var(--melocoton); letter-spacing:.14em; text-transform:uppercase; font-size:13px; opacity:.9; }
+.cc-when{ font-family:var(--body); font-weight:300; font-size:14px; letter-spacing:.1em; color:var(--lila); opacity:.85; }
+.cc-intro{ display:none; flex-direction:column; gap:11px; }
+.cc-intro .ci-line{ font-family:var(--body); font-weight:300; font-size:15px; letter-spacing:.06em; color:var(--lila); opacity:.85; }
+.cc-intro .ci-line:first-child{ color:var(--melocoton); letter-spacing:.16em; text-transform:uppercase; font-size:12.5px; opacity:.9; }
 
 /* ---- interludio en negro ---- */
 #break-screen{ position:absolute; inset:0; z-index:32; background:#050509; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 40px; opacity:0; visibility:hidden; transition:opacity 800ms ease; }
 #break-screen.show{ opacity:1; visibility:visible; }
-#break-screen .break-text{ display:flex; flex-direction:column; gap:14px; }
+#break-screen .break-text{ display:flex; flex-direction:column; gap:13px; }
 #break-screen .bc-line{ font-family:var(--serif); font-weight:300; font-style:italic; font-size:22px; letter-spacing:.04em; color:var(--lila); }
 #break-screen .bc-line:only-child{ font-size:27px; color:var(--texto); }
 
@@ -204,8 +189,6 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
 .romaji{ font-family:var(--serif); font-weight:300; font-size:30px; letter-spacing:.42em; color:var(--lila); margin-top:18px; padding-left:.42em; }
 .t-rule{ width:46px; height:1px; background:var(--lila); opacity:.5; margin:26px 0 18px; }
 .t-sub{ font-family:var(--body); font-weight:300; font-size:14.5px; letter-spacing:.06em; color:rgba(240,237,232,0.82); opacity:0; transition:opacity 1400ms ease; }
-.t-setting{ font-family:var(--serif); font-weight:300; font-size:12.5px; letter-spacing:.34em; text-transform:uppercase; color:var(--melocoton); opacity:0; margin-bottom:28px; transition:opacity 1600ms ease; }
-.t-setting.show{ opacity:.78; }
 .t-sub.show{ opacity:1; }
 .t-begin{
   margin-top:46px; font-family:var(--serif); font-weight:400; font-size:16px; letter-spacing:.18em;
@@ -287,6 +270,7 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
     <div class="cc-num" id="cc-num"></div>
     <div class="cc-name" id="cc-name"></div>
     <div class="cc-rule"></div>
+    <div class="cc-when" id="cc-when"></div>
     <div class="cc-intro" id="cc-intro"></div>
   </div>
 
@@ -343,7 +327,6 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
     </div>
     <div class="moon"></div>
     <div class="title-wrap">
-      <div class="t-setting" id="t-setting">Japón feudal · Primavera</div>
       <div class="kanji">距離</div>
       <div class="romaji">Distancia</div>
       <div class="t-rule"></div>
@@ -363,7 +346,7 @@ body{ display:flex; align-items:center; justify-content:center; overflow:hidden;
    DISTANCIA — Motor
    ========================================================================= */
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const SAVE_KEY = 'distancia_progress_v4';
+const SAVE_KEY = 'distancia_progress_v5';
 
 /* refs */
 const app       = document.getElementById('app');
@@ -381,7 +364,6 @@ const muteBtn   = document.getElementById('mute');
 let cur = { p:0, l:0 };      // página / línea actual
 let activeLayer = 0;
 let typing = false, typeTimer = null;
-let curText = '';
 let started = false, busy = false;
 
 /* =========================================================================
@@ -398,7 +380,7 @@ function buildParticles(season){
   currentSeason = season;
   const cont = document.getElementById('particles');
   cont.innerHTML = '';
-  if(reduceMotion) return;
+  if(reduceMotion || !season) return;
   const svg = particleSVG(season);
   const n = season==='invierno' ? 15 : 11;
   for(let i=0;i<n;i++){
@@ -463,6 +445,22 @@ function stopSpeak(){ if(window.speechSynthesis) window.speechSynthesis.cancel()
 /* =========================================================================
    RENDER DE ESCENA (crossfade A/B)
    ========================================================================= */
+/* intérprete de etiquetas: who + pose -> clave de arte */
+const POSE_MAP = {
+  kenzo:   { stand:'el',   sit:'elSit',   back:'elBack',  work:'el', bag:'kenzoBag' },
+  hana:    { stand:'ella', sit:'ellaSit', back:'ellaBack', hold:'ellaHold', bow:'hanaBow', curly:'ellaRizado' },
+  padre:   { stand:'padre', sit:'padre',  work:'padre' },
+  hiro:    { stand:'hiro',  sit:'hiro' },
+  maestro: { stand:'maestro', work:'maestro', sit:'maestro' },
+  daisuke: { stand:'daisuke', sit:'daisuke' },
+};
+function castToChar(c){
+  const m = POSE_MAP[c.who] || {};
+  const key = m[c.pose || 'stand'] || m.stand || c.who;
+  const seated = (c.pose==='sit' || c.pose==='work' || c.pose==='curly' || c.who==='padre' || /Sit$/.test(key) || key==='ellaRizado');
+  const defW = ({stand:'47%', sit:'50%', back:'48%', hold:'48%', work:'50%', curly:'50%'})[c.pose||'stand'] || '48%';
+  return { key, pos:c.at||'center', sit:seated, dim:!!c.dim, width:c.w||c.width||defW, dx:c.dx, bottom:c.bottom };
+}
 function charArtKey(c){
   if(c.sit){ if(c.key==='ella') return 'ellaSit'; if(c.key==='el') return 'elSit'; }
   return c.key;
@@ -508,15 +506,21 @@ function skyFor(page){
   return SKY[page.light] || SKY.dia;
 }
 function sceneHTML(page){
-  const bg = BACKGROUNDS[page.bg](skyFor(page), page.opts||{});
-  const chars = (page.chars||[]).map(charHTML).join('') + dogHTML(page.dog) + propHTML(page.prop);
-  const tintClass = (page.light==='otono'||page.light==='invierno') ? page.light : page.light;
+  const bgName = page.set || page.bg;
+  const bg = BACKGROUNDS[bgName](skyFor(page), page.opts||{});
+  // reparto: prefiere `cast` (etiquetas who/pose); compatibilidad con `chars`
+  const castArr = page.cast ? page.cast.map(castToChar) : (page.chars || []);
+  const chars = castArr.map(charHTML).join('') + dogHTML(page.dog) + propHTML(page.prop);
   return `<div class="bg-fill">${bg}</div>
           <div class="chars">${chars}</div>
-          <div class="bg-tint ${tintClass}"></div>`;
+          <div class="bg-tint ${page.light}"></div>`;
 }
+/* sets interiores / contemplativos: sin partículas cayendo */
+const NO_PARTICLE_SETS = ['taller','cuarto','techo','cocina'];
 function renderPage(page){
-  if(page.season && page.season!==currentSeason) buildParticles(page.season);
+  const bgName = page.set || page.bg;
+  const seas = NO_PARTICLE_SETS.includes(bgName) ? null : (page.season || null);
+  if(seas !== currentSeason) buildParticles(seas);
   return new Promise(resolve=>{
     const incoming = layers[1-activeLayer];
     incoming.innerHTML = sceneHTML(page);
@@ -534,11 +538,21 @@ function renderPage(page){
 function showChapterCard(page){
   document.getElementById('cc-num').textContent  = page.chapter;
   document.getElementById('cc-name').textContent = page.chapterName;
-  const introBox = document.getElementById('cc-intro');
-  introBox.innerHTML = (page.intro||[]).map(l=>`<div class="ci-line">${l}</div>`).join('');
+  const whenEl  = document.getElementById('cc-when');
+  const introEl = document.getElementById('cc-intro');
+  if(page.intro && page.intro.length){
+    whenEl.style.display = 'none';
+    introEl.style.display = 'flex';
+    introEl.innerHTML = page.intro.map(l=>`<div class="ci-line">${l}</div>`).join('');
+  } else {
+    introEl.style.display = 'none';
+    introEl.innerHTML = '';
+    whenEl.style.display = 'block';
+    whenEl.textContent = page.chapterWhen || '';
+  }
   return new Promise(resolve=>{
     chapterCard.classList.add('show');
-    const hold = reduceMotion ? 800 : (2600 + (page.intro? page.intro.length*350 : 0));
+    const hold = reduceMotion ? 700 : (2600 + (page.intro? page.intro.length*300 : 0));
     setTimeout(()=>{
       chapterCard.classList.remove('show');
       setTimeout(resolve, reduceMotion ? 0 : 700);
@@ -549,38 +563,20 @@ function showChapterCard(page){
 /* =========================================================================
    DIÁLOGO + TYPEWRITER
    ========================================================================= */
-function beatGlyph(k){
-  if(k==='pausa')    return '✿';
-  if(k==='largo')    return '—  —';
-  if(k==='incomodo') return '· · ·';
-  return '— —';
-}
 function showLine(){
   const line = STORY[cur.p].lines[cur.l];
-  const isNarr    = line.s === 'narrador';
-  const isSpecial = line.s === 'special';
-  const isBeat    = line.s === 'beat';
-  const isVoice   = isNarr || isSpecial || (!isBeat);   // todo menos beats lleva voz
-
-  dialogue.classList.toggle('narrador', isNarr);
-  dialogue.classList.toggle('special', isSpecial);
+  const isNarr = line.s === 'narrador';
+  const isBeat = line.s === 'beat';
+  dialogue.classList.toggle('narrador', isNarr || isBeat);
   dialogue.classList.toggle('beat', isBeat);
-  dialogue.classList.remove('comodo','largo','incomodo','pausa');
-  if(isBeat && line.k) dialogue.classList.add(line.k);
-
-  const showName = (!isNarr && !isSpecial && !isBeat);
-  speakerEl.textContent = showName ? line.s : '';
-  const showNote = (showName && line.note);
+  speakerEl.textContent = (isNarr||isBeat) ? '' : line.s;
+  const showNote = (!isNarr && !isBeat && line.note);
   noteEl.textContent = showNote ? line.note : '';
   noteEl.style.display = showNote ? 'block' : 'none';
-
-  const text = (isBeat && !line.t) ? beatGlyph(line.k) : line.t;
-  curText = text;
-
   continueEl.classList.remove('show');
   dialogue.classList.add('show');
-  typeText(dtextEl, text, ()=> continueEl.classList.add('show'));
-  if(isVoice && text) speak(text);
+  typeText(dtextEl, line.t, ()=> continueEl.classList.add('show'));
+  if(!isBeat) speak(line.t);
   save();
 }
 function typeText(target, text, done){
@@ -595,7 +591,7 @@ function typeText(target, text, done){
 }
 function finishTyping(){
   clearInterval(typeTimer); typing=false;
-  dtextEl.textContent = curText;
+  dtextEl.textContent = STORY[cur.p].lines[cur.l].t;
   continueEl.classList.add('show');
 }
 
@@ -627,6 +623,14 @@ async function advance(){
     busy = false;
     showLine();
   } else {
+    const finished = STORY[cur.p];
+    if(finished.breakText){
+      busy = true;
+      dialogue.classList.remove('show');
+      await wait(reduceMotion?0:360);
+      await showBreak(finished.breakText);
+      busy = false;
+    }
     runEnding();
   }
 }
@@ -639,7 +643,7 @@ function showBreak(content){
   el.querySelector('.break-text').innerHTML = lines.map(l=>`<div class="bc-line">${l}</div>`).join('');
   return new Promise(res=>{
     el.classList.add('show');
-    const hold = reduceMotion ? 700 : (1500 + lines.length*550);
+    const hold = reduceMotion ? 700 : (1600 + lines.length*500);
     setTimeout(()=>{
       el.classList.remove('show');
       setTimeout(res, reduceMotion ? 0 : 800);
@@ -668,10 +672,22 @@ function runEnding(){
   dialogue.classList.remove('show');
   layers.forEach(l=> l.classList.remove('visible'));
   endScreen.classList.add('show');
+  const incomplete = (window.STORY_COMPLETE === false);
+  const kanjiEl = endScreen.querySelector('.end-kanji');
+  const signEl  = endScreen.querySelector('.end-sign');
+  const againEl = endScreen.querySelector('.end-again');
+  if(incomplete){
+    kanjiEl.textContent = '続く';
+    signEl.textContent  = 'Continuará · Capítulos 3 a 5 próximamente';
+    againEl.textContent = 'Volver a empezar';
+  } else {
+    kanjiEl.textContent = '終';
+    signEl.textContent  = '— DISTANCIA';
+  }
   clearSave();
-  setTimeout(()=> endScreen.querySelector('.end-kanji').classList.add('show'), 900);
-  setTimeout(()=> endScreen.querySelector('.end-sign').classList.add('show'), 2600);
-  setTimeout(()=> endScreen.querySelector('.end-again').classList.add('show'), 4200);
+  setTimeout(()=> kanjiEl.classList.add('show'), 900);
+  setTimeout(()=> signEl.classList.add('show'), 2600);
+  setTimeout(()=> againEl.classList.add('show'), 4200);
 }
 
 /* =========================================================================
@@ -731,11 +747,10 @@ document.getElementById('end-again').addEventListener('click', (e)=>{ e.stopProp
 /* mostrar "continuar" si hay progreso guardado */
 (function initTitle(){
   const saved = loadSave();
-  const showSet  = ()=> document.getElementById('t-setting').classList.add('show');
   const showSub  = ()=> document.getElementById('t-sub').classList.add('show');
   const showBtn  = ()=>{ document.getElementById('begin').classList.add('show'); if(saved && (saved.p>0||saved.l>0)) document.getElementById('resume').classList.add('show'); };
-  if(reduceMotion){ showSet(); showSub(); showBtn(); }
-  else { setTimeout(showSet, 1400); setTimeout(showSub, 4000); setTimeout(showBtn, 5600); }
+  if(reduceMotion){ showSub(); showBtn(); }
+  else { setTimeout(showSub, 3000); setTimeout(showBtn, 5000); }
 })();
 </script>
 </body>
