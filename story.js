@@ -1,937 +1,1969 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Distancia</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;500;600&family=Nunito:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
-
-<style>
 /* =========================================================================
-   DISTANCIA — Novela visual · Japón feudal
-   Paleta y tipografía base
+   DISTANCIA — story.js
+   Guión: Kenzo & Hana · Introducción + Capítulos 1–2
+   (Capítulos 3–5 se agregan después.)
+
+   El apartado `xml` de cada página es la FUENTE DE VERDAD visual:
+   describe la escena; el motor la interpreta vía set/light/season/cast.
+
+   page = {
+     xml,                                  // nota de dirección (qué se ve)
+     chapter?, chapterName?, chapterWhen?  // 1ª página del capítulo
+     intro?[]                              // tarjeta de capítulo con varias líneas
+     lead?[]                               // [TEXTO EN PANTALLA] en negro antes de la escena
+     set, light, season, opts?            // escenario / luz / estación
+     cast?: [{ who, pose, at, dim, w, dx, bottom }]
+       who:  kenzo | hana | padre | hiro
+       pose: stand | sit | back | hold | work
+       at:   left | center | right
+     dog?:  true | { pos, dx }
+     prop?: 'cajita' | 'crane' | 'note' | 'box' | 'trampa'
+     lines: [ N(t) | K(t,note) | H(t,note) | B(t) ]
+     breakText?                            // interludio en negro tras la página
+   }
    ========================================================================= */
-:root{
-  --bg:#0D0D1A;
-  --lila:#B8A9D9;
-  --melocoton:#E8C4A0;
-  --texto:#F0EDE8;
-  --box:rgba(13,13,26,0.85);
-  --serif:'Noto Serif JP', serif;
-  --body:'Nunito', sans-serif;
-}
-*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-html,body{ height:100%; background:#05050c; font-family:var(--body); color:var(--texto); overscroll-behavior:none; }
-body{ display:flex; align-items:center; justify-content:center; overflow:hidden; }
+const N = (t) => ({ s:'narrador', t });
+const K = (t,note) => note ? ({s:'Kenzo', t, note}) : ({s:'Kenzo', t});
+const H = (t,note) => note ? ({s:'Hana',  t, note}) : ({s:'Hana',  t});
+const B = (t) => ({ s:'beat', t });
 
-#app{
-  position:relative;
-  width:min(100%, 430px);
-  height:100dvh; height:100vh;
-  overflow:hidden;
-  background:var(--bg);
-  user-select:none; -webkit-user-select:none;
-  box-shadow:0 0 80px rgba(0,0,0,0.6);
-  cursor:pointer;
-}
+const STORY = [
 
-/* =========================================================================
-   ESCENARIO — dos capas con crossfade
-   ========================================================================= */
-.stage{ position:absolute; inset:0; }
-.bg-layer{ position:absolute; inset:0; opacity:0; transition:opacity 640ms ease; }
-.bg-layer.visible{ opacity:1; }
+/* ============================ INTRODUCCIÓN ============================ */
+{ chapter:'Introducción', chapterName:'Antes de que empiece todo',
+  lead:['Japón. Período Edo.', 'Aldea de Kuromi. Provincia de Shinano.', 'Año 1802.'],
+  xml:'Aldea japonesa. Amanecer. Vista desde una colina: casas de madera, tejados de paja, el río entre campos de arroz, montañas al fondo. Humo de los primeros fogones subiendo recto.',
+  set:'vista', light:'amanecer', season:'primavera', cast:[],
+  lines:[
+    N('Me llamo Kenzo.'),
+    N('Tengo quince años y llevo toda mi vida en esta aldea.'),
+    N('Kuromi no es grande ni importante.'),
+    N('Es solo una aldea al pie de las montañas, a un día de camino de Matsumoto, la ciudad más cercana.'),
+    N('Aquí todos se conocen, todos saben lo que hace el vecino, y las noticias viajan más rápido que cualquier mensajero.'),
+  ]},
 
-.bg-fill{ position:absolute; inset:-7%; will-change:transform; transition:transform 1000ms cubic-bezier(.22,.61,.36,1); }
-.bg-fill svg{ width:100%; height:100%; display:block; }
-.chars{ position:absolute; inset:0; will-change:transform; transition:transform 1000ms cubic-bezier(.22,.61,.36,1); }
+{ xml:'Interior de un taller de carpintería. Madera por todas partes, herramientas colgadas con orden. El padre de Kenzo trabajando; Kenzo adolescente sentado en el suelo con piezas desarmadas frente a él.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'padre', pose:'work', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Mi padre es carpintero.'),
+    N('Y su padre antes que él.'),
+    N('No somos ricos, pero tampoco nos falta nada.'),
+    N('Tenemos el taller, tenemos la casa, tenemos suficiente arroz para el invierno.'),
+    N('Mi padre esperaba que yo aprendiera el oficio.'),
+    N('Y lo aprendí.'),
+    N('Pero lo que realmente me gustaba era desarmar las cosas para ver cómo funcionaban.'),
+    N('Y luego armarlas diferente.'),
+    N('A veces quedaban mejor.'),
+    N('A veces no.'),
+    N('Mi padre decía que eso no era carpintería.'),
+    N('Probablemente tenía razón.'),
+  ]},
 
-/* ---- iluminación / mood (sobre fondo y personajes) ---- */
-.bg-tint{ position:absolute; inset:0; pointer-events:none; }
-.bg-tint.amanecer{ background:linear-gradient(160deg, rgba(255,196,180,.22), rgba(255,170,150,.05)); mix-blend-mode:soft-light; }
-.bg-tint.dia{ background:linear-gradient(180deg, rgba(255,250,235,.10), transparent 60%); }
-.bg-tint.tarde{ background:linear-gradient(160deg, rgba(255,200,120,.30), rgba(255,150,90,.10)); mix-blend-mode:soft-light; }
-.bg-tint.atardecer{ background:linear-gradient(160deg, rgba(255,140,90,.34), rgba(120,70,120,.22)); mix-blend-mode:soft-light; }
-.bg-tint.noche{ background:linear-gradient(180deg, rgba(22,28,64,.50), rgba(10,12,32,.60)); }
-.bg-tint.noche::after{ content:''; position:absolute; inset:0; box-shadow:inset 0 0 160px 30px rgba(5,6,18,0.6); }
-.bg-tint.nublado{ background:rgba(150,156,168,.32); }
-.bg-tint.otono{ background:linear-gradient(160deg, rgba(220,140,70,.26), rgba(180,110,70,.10)); mix-blend-mode:soft-light; }
-.bg-tint.invierno{ background:linear-gradient(180deg, rgba(180,200,220,.22), rgba(150,170,200,.12)); }
+{ xml:'Kenzo en el mercado de la aldea, hablando con varios, moviéndose entre los puestos con facilidad. Conoce a todos.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('En la aldea yo era conocido por dos cosas.'),
+    N('Una: que nunca me quedaba callado cuando había algo que decir.'),
+    N('Dos: que siempre tenía algo que decir.'),
+    N('No era el más listo del lugar.'),
+    N('Tampoco el más trabajador.'),
+    N('Pero era bueno estando presente.'),
+    N('En llenar los cuartos.'),
+    N('En hacer que el tiempo pasara más rápido cuando estaba cerca.'),
+    N('Eso a veces era un don.'),
+    N('A veces era un problema.'),
+    N('Dependía de a quién le preguntaras.'),
+  ]},
 
-/* =========================================================================
-   PERSONAJES
-   ========================================================================= */
-.character{ position:absolute; bottom:34%; width:60%; max-width:250px; }
-.character.center{ left:50%; transform:translateX(-50%); }
-.character.left{ left:7%; }
-.character.right{ right:7%; }
-.character.dim{ opacity:.5; filter:blur(1.4px) saturate(.78) brightness(.92); }
-.char-inner{ transform-origin:50% 100%; }
-.char-inner svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 16px 34px rgba(0,0,0,0.4)); }
-@keyframes breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.014); } }
-.char-inner.breathe{ animation:breathe 4.2s ease-in-out infinite; }
+{ xml:'Kenzo solo, de noche, sentado en el techo del taller mirando las estrellas. Abajo se escucha al padre trabajando todavía.',
+  set:'techo', light:'noche', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('En ese entonces yo no pensaba mucho en el futuro.'),
+    N('Pensaba en el día de hoy, en lo que había que hacer, en a quién ver.'),
+    N('No sabía que ese año iba a cambiar bastante cosa.'),
+    N('No sabía que iba a aparecer alguien que me iba a enseñar a quedarme quieto.'),
+    N('O al menos a intentarlo.'),
+  ]},
 
-/* ---- perro (elevado para asomar sobre la caja de diálogo) ---- */
-.dog{ position:absolute; bottom:35.5%; width:19%; max-width:112px; z-index:4; }
-.dog.center{ left:50%; transform:translateX(-50%); }
-.dog.left{ left:14%; }
-.dog.right{ right:14%; }
-.dog .char-inner svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 8px 16px rgba(0,0,0,0.4)); }
+/* ============================ CAPÍTULO 1 ============================
+   "El olor de las especias nuevas" */
+{ chapter:'Capítulo 1', chapterName:'El olor de las especias nuevas', chapterWhen:'Primavera. Ella llega a la aldea.',
+  xml:'Mercado de Kuromi. Mañana de primavera. Puestos de tela, especias, verduras, cerámica. Pétalos de cerezo entre los toldos. Kenzo cargando sacos para un vecino.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Era una mañana de primavera como cualquier otra.'),
+    N('Yo estaba ayudando a cargar sacos en el mercado.'),
+    N('No era mi trabajo, pero el señor Tanaka siempre me daba algo de arroz a cambio.'),
+    N('Y yo nunca le decía que no al arroz.'),
+  ]},
 
-/* ---- props (objetos: grulla, caja, nota) ---- */
-.prop{ position:absolute; left:50%; bottom:42%; transform:translateX(-50%); width:38%; max-width:240px; z-index:3; }
-.prop svg{ width:100%; height:auto; display:block; filter:drop-shadow(0 14px 26px rgba(0,0,0,0.34)); }
-@keyframes floatProp{ 0%,100%{ transform:translate(-50%, 0); } 50%{ transform:translate(-50%, -7px); } }
-.prop{ animation:floatProp 5s ease-in-out infinite; }
+{ xml:'Entre los puestos, una chica nueva. Kimono gris pálido, sencillo pero bien cuidado, cabello recogido con precisión. Parada frente al puesto de especias con una seriedad que no corresponde al mercado de una aldea pequeña.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'stand', at:'center'}],
+  lines:[
+    N('Ahí fue cuando la vi por primera vez.'),
+    N('Estaba frente al puesto de especias del señor Mori.'),
+    N('Oliendo cada una.'),
+    N('Una por una.'),
+    N('Con la cara de alguien que está tomando una decisión muy importante.'),
+    N('Aunque fueran especias.'),
+  ]},
 
-/* =========================================================================
-   PARTÍCULAS DE SAKURA
-   ========================================================================= */
-.particles{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:6; }
-.petal{ position:absolute; top:-8%; opacity:0; will-change:transform,opacity; animation:fall linear infinite; }
-.petal svg{ display:block; width:100%; height:100%; }
-@keyframes fall{
-  0%{ transform:translate(0,-12vh) rotate(0deg); opacity:0; }
-  12%{ opacity:var(--op,0.5); }
-  88%{ opacity:var(--op,0.5); }
-  100%{ transform:translate(var(--dx,40px), 112vh) rotate(420deg); opacity:0; }
-}
+{ xml:'Hana huele una especia y niega casi imperceptiblemente. El señor Mori la mira sin saber qué decir. Ella huele otra. La aparta también.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'stand', at:'center'}],
+  lines:[
+    N('El señor Mori se veía confundido.'),
+    N('Nadie en Kuromi olía las especias antes de comprarlas.'),
+    N('La gente de aquí compraba lo que había y ya.'),
+    N('Esta chica claramente no era de aquí.'),
+  ]},
 
-/* =========================================================================
-   CAJA DE DIÁLOGO
-   ========================================================================= */
-#dialogue{
-  position:absolute; left:0; right:0; bottom:0;
-  height:35%; min-height:228px;
-  background:var(--box);
-  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-  border-top:1px solid rgba(184,169,217,0.3);
-  border-radius:20px 20px 0 0;
-  padding:24px 28px calc(24px + env(safe-area-inset-bottom)) 28px;
-  display:flex; flex-direction:column;
-  opacity:0; transform:translateY(10px);
-  transition:opacity 500ms ease, transform 500ms ease;
-  z-index:10;
-}
-#dialogue.show{ opacity:1; transform:translateY(0); }
-.speaker{
-  font-family:var(--serif); font-weight:500; font-size:18px; letter-spacing:.04em;
-  color:var(--lila); margin-bottom:10px; min-height:22px;
-}
-.note{
-  font-family:var(--body); font-style:italic; font-size:13.5px; letter-spacing:.02em;
-  color:rgba(184,169,217,0.7); margin-bottom:8px; min-height:0;
-}
-.dtext{ font-family:var(--body); font-size:21px; line-height:1.6; color:var(--texto); flex:1; text-wrap:pretty; }
-#dialogue.narrador .dtext{ font-style:italic; color:var(--lila); text-align:center; display:flex; align-items:center; justify-content:center; font-size:20px; }
-#dialogue.narrador .speaker, #dialogue.narrador .note{ display:none; }
-/* compases (silencio, pausa, el río…): tenue, pequeño, sin voz */
-#dialogue.beat .dtext{ font-size:16px; opacity:.55; letter-spacing:.1em; font-style:italic; }
+{ xml:'Hana encuentra una especia que le convence, la huele dos veces para confirmar, asiente. Saca un papel doblado — una lista de caligrafía precisa. Revisa algo, lo dobla de vuelta con exactitud y sigue.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'hold', at:'center'}],
+  lines:[
+    N('Compró una sola.'),
+    N('Luego sacó una lista.'),
+    N('Escrita con más cuidado que cualquier documento oficial que yo hubiera visto.'),
+    N('La dobló en exactamente los mismos dobleces de antes.'),
+    N('Y siguió su camino como si el mercado entero fuera un trámite necesario.'),
+  ]},
 
-.caret{ display:inline-block; width:2px; height:1.05em; margin-left:1px; background:currentColor; vertical-align:-2px; opacity:.7; animation:blinkCaret .9s steps(1) infinite; }
-@keyframes blinkCaret{ 50%{ opacity:0; } }
-.caret.hidden{ display:none; }
+{ xml:'Hana pasa cerca de Kenzo sin verlo. A él se le cae un saco justo en ese momento — ruido ridículo. Ella voltea un segundo, lo mira, lo evalúa, sigue caminando.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    N('Pasó a mi lado justo cuando se me cayó un saco.'),
+    N('Hizo un ruido bastante ridículo.'),
+    N('Ella volteó.'),
+    N('Me miró un segundo.'),
+    N('Y siguió caminando.'),
+    N('Sin decir nada.'),
+    N('Sin reírse.'),
+    N('Solo me vio y decidió que no valía la pena comentarlo.'),
+    N('Eso también me lo guardaría después.'),
+  ]},
 
-.continue{ position:absolute; right:22px; bottom:16px; font-size:18px; color:var(--lila); opacity:0; transition:opacity 400ms ease; animation:bob 1.3s ease-in-out infinite; }
-.continue.show{ opacity:.9; }
-@keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(4px); } }
+{ xml:'Kenzo parado con el saco en el suelo. El señor Tanaka lo mira desde el puesto. Kenzo recoge el saco pero sigue mirando hacia donde ella se fue.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Me quedé parado con el saco en la mano.'),
+    N('El señor Tanaka me gritó que me apurara.'),
+    N('Me apuré.'),
+    N('Pero volteé tres veces hacia donde había ido.'),
+    N('Ya no estaba.'),
+  ]},
 
-/* =========================================================================
-   TARJETA DE CAPÍTULO
-   ========================================================================= */
-#chapter-card{
-  position:absolute; inset:0; z-index:30;
-  background:rgba(7,7,16,0.96);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; padding:0 40px;
-  opacity:0; visibility:hidden; transition:opacity 700ms ease;
-}
-#chapter-card.show{ opacity:1; visibility:visible; }
-.cc-num{ font-family:var(--serif); font-weight:300; font-size:15px; letter-spacing:.32em; color:var(--melocoton); margin-bottom:22px; text-transform:uppercase; }
-.cc-name{ font-family:var(--serif); font-weight:400; font-size:34px; line-height:1.3; color:var(--texto); }
-.cc-rule{ width:40px; height:1px; background:var(--lila); opacity:.5; margin:24px 0; }
-.cc-when{ font-family:var(--body); font-weight:300; font-size:14px; letter-spacing:.1em; color:var(--lila); opacity:.85; }
-.cc-intro{ display:none; flex-direction:column; gap:11px; }
-.cc-intro .ci-line{ font-family:var(--body); font-weight:300; font-size:15px; letter-spacing:.06em; color:var(--lila); opacity:.85; }
-.cc-intro .ci-line:first-child{ color:var(--melocoton); letter-spacing:.16em; text-transform:uppercase; font-size:12.5px; opacity:.9; }
+{ xml:'Tarde. Kenzo en el río — el lugar donde va a pensar. Sentado en la orilla, el cubo a su lado, el río tranquilo.',
+  set:'rio', light:'tarde', season:'primavera', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Esa tarde fui al río.'),
+    N('Que es donde voy cuando tengo algo dando vueltas en la cabeza.'),
+    N('No sabía quién era ella.'),
+    N('No sabía de dónde venía.'),
+    N('Solo sabía que había rechazado seis especias seguidas con total convicción.'),
+    N('Y que cuando se me cayó el saco me miró como si eso fuera lo más predecible del mundo.'),
+    N('Y por alguna razón eso me pareció lo más interesante que había pasado en semanas.'),
+  ]},
 
-/* ---- interludio en negro ---- */
-#break-screen{ position:absolute; inset:0; z-index:32; background:#050509; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 40px; opacity:0; visibility:hidden; transition:opacity 800ms ease; }
-#break-screen.show{ opacity:1; visibility:visible; }
-#break-screen .break-text{ display:flex; flex-direction:column; gap:13px; }
-#break-screen .bc-line{ font-family:var(--serif); font-weight:300; font-style:italic; font-size:22px; letter-spacing:.04em; color:var(--lila); }
-#break-screen .bc-line:only-child{ font-size:27px; color:var(--texto); }
+{ xml:'Noche. Kenzo en el techo del taller, mirando las estrellas. Esta vez pensando en ella.',
+  set:'techo', light:'noche', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Esa noche, acostado en el techo como siempre, me pregunté varias cosas.'),
+    N('Cómo se llamaba.'),
+    N('Por qué había llegado a Kuromi.'),
+    N('Qué hacía con las especias que sí aprobaba.'),
+    N('Si tenía esa misma cara para todo.'),
+    N('Cosas sin importancia.'),
+    N('Pero muchas cosas sin importancia al mismo tiempo ya es algo.'),
+  ]},
 
-/* =========================================================================
-   PANTALLA DE TÍTULO
-   ========================================================================= */
-#title-screen{ position:absolute; inset:0; z-index:40; overflow:hidden; transition:opacity 800ms ease; }
-#title-screen.gone{ opacity:0; pointer-events:none; }
-.sky-fill{ position:absolute; inset:0; background:linear-gradient(180deg,#0b0f28 0%, #161a40 48%, #2a2350 100%); }
-.sky-fill svg{ position:absolute; inset:0; width:100%; height:100%; }
-.moon{
-  position:absolute; top:13%; left:50%; transform:translateX(-50%);
-  width:200px; height:200px; border-radius:50%;
-  background:radial-gradient(circle at 42% 40%, #fbf7ee 0%, #ece6f2 58%, #cfc6e0 100%);
-  box-shadow:0 0 80px 24px rgba(232,224,242,0.35), 0 0 160px 60px rgba(184,169,217,0.18);
-  animation:moonBreath 7s ease-in-out infinite;
-}
-.moon::before, .moon::after{ content:''; position:absolute; border-radius:50%; background:rgba(190,182,210,0.45); }
-.moon::before{ width:34px; height:34px; top:42px; left:54px; }
-.moon::after{ width:22px; height:22px; top:110px; left:120px; box-shadow:40px -30px 0 -4px rgba(190,182,210,0.4); }
-@keyframes moonBreath{ 0%,100%{ transform:translateX(-50%) scale(1); opacity:.94; } 50%{ transform:translateX(-50%) scale(1.035); opacity:1; } }
+{ lead:['Días después.'],
+  xml:'Mercado. Kenzo buscando sin parecer que busca. La ve al fondo, esta vez en el puesto de verduras, con el mismo criterio de siempre.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    N('Los días siguientes la fui viendo por la aldea.'),
+    N('Siempre en lo suyo.'),
+    N('Siempre con esa concentración de alguien que tiene cosas importantes que resolver.'),
+    N('Aunque fueran verduras.'),
+    N('Un día la vi rechazar tres zanahorias seguidas.'),
+    N('El vendedor se veía ofendido.'),
+    N('Ella no.'),
+  ]},
 
-.title-wrap{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:60px; }
-.kanji{ font-family:var(--serif); font-weight:300; font-size:96px; letter-spacing:.08em; color:var(--texto); text-shadow:0 6px 40px rgba(184,169,217,0.35); line-height:1; }
-.romaji{ font-family:var(--serif); font-weight:300; font-size:30px; letter-spacing:.42em; color:var(--lila); margin-top:18px; padding-left:.42em; }
-.t-rule{ width:46px; height:1px; background:var(--lila); opacity:.5; margin:26px 0 18px; }
-.t-sub{ font-family:var(--body); font-weight:300; font-size:14.5px; letter-spacing:.06em; color:rgba(240,237,232,0.82); opacity:0; transition:opacity 1400ms ease; }
-.t-sub.show{ opacity:1; }
-.t-begin{
-  margin-top:46px; font-family:var(--serif); font-weight:400; font-size:16px; letter-spacing:.18em;
-  color:var(--texto); background:transparent; border:1px solid rgba(184,169,217,0.45); border-radius:40px;
-  padding:13px 42px; cursor:pointer; opacity:0; transition:opacity 1400ms ease, background .4s ease, border-color .4s ease;
-  animation:pulseBtn 3.6s ease-in-out infinite;
-}
-.t-begin.show{ opacity:1; }
-.t-begin:hover{ border-color:var(--lila); background:rgba(184,169,217,0.08); }
-@keyframes pulseBtn{ 0%,100%{ box-shadow:0 0 0 0 rgba(184,169,217,0); } 50%{ box-shadow:0 0 26px 0 rgba(184,169,217,0.18); } }
-.t-resume{ margin-top:18px; font-family:var(--body); font-size:13px; letter-spacing:.05em; color:var(--lila); opacity:0; cursor:pointer; background:none; border:none; text-decoration:underline; text-underline-offset:3px; transition:opacity 1400ms ease; }
-.t-resume.show{ opacity:.7; }
+{ xml:'Camino al río. Tarde. Kenzo va con el cubo. La ve venir en dirección contraria, cargando manojos de hierbas atadas con precisión. Un perro mediano va adelante.',
+  set:'camino', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'hana', pose:'hold', at:'center'}], dog:{pos:'center', dx:78},
+  lines:[
+    N('Una tarde la vi venir por el mismo camino que yo.'),
+    N('Cargaba hierbas.'),
+    N('Muchas hierbas.'),
+    N('Cada tipo amarrado por separado.'),
+    N('Con un perro adelante que caminaba como si supiera a dónde iban.'),
+  ]},
 
-/* =========================================================================
-   FIN
-   ========================================================================= */
-#end-screen{
-  position:absolute; inset:0; z-index:35; background:#05050c;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 40px;
-  opacity:0; visibility:hidden; transition:opacity 1400ms ease;
-}
-#end-screen.show{ opacity:1; visibility:visible; }
-.end-kanji{ font-family:var(--serif); font-weight:200; font-size:56px; color:var(--texto); opacity:0; transition:opacity 1600ms ease; }
-.end-kanji.show{ opacity:.92; }
-.end-sign{ font-family:var(--serif); font-weight:400; font-size:16px; letter-spacing:.2em; color:var(--lila); margin-top:26px; opacity:0; transition:opacity 1400ms ease; }
-.end-sign.show{ opacity:.85; }
-.end-again{ margin-top:48px; font-family:var(--body); font-size:13px; letter-spacing:.08em; color:var(--lila); background:none; border:1px solid rgba(184,169,217,0.4); border-radius:30px; padding:11px 30px; cursor:pointer; opacity:0; transition:opacity 1400ms ease; }
-.end-again.show{ opacity:.8; }
+{ xml:'Kenzo cambia ligeramente su ruta para cruzarse. A mitad del ajuste se da cuenta de lo que hace. Ya es tarde para deshacerlo sin que se vea raro.',
+  set:'camino', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Cambié un poco mi ruta para que el camino coincidiera.'),
+    N('A mitad del cambio me di cuenta de lo que estaba haciendo.'),
+    N('Ya era tarde para arreglarlo sin verme más ridículo.'),
+    N('Así que seguí.'),
+  ]},
 
-/* =========================================================================
-   BOTÓN MUTE
-   ========================================================================= */
-#mute{
-  position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px;
-  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
-  background:rgba(13,13,26,0.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-  border:1px solid rgba(184,169,217,0.2); border-radius:50%; color:var(--lila);
-  cursor:pointer; z-index:50; opacity:0; transition:opacity .5s ease, background .3s ease;
-}
-#mute.show{ opacity:.85; }
-#mute:hover{ background:rgba(184,169,217,0.12); }
-#mute svg{ width:18px; height:18px; display:block; }
+{ xml:'Se cruzan. El perro llega a Kenzo primero, lo olfatea. Hana levanta la vista de las hierbas; lo reconoce del mercado. Kenzo sostiene el cubo con más fuerza de la necesaria.',
+  set:'camino', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'hold', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Buenas tardes.'),
+    H('Buenas tardes.', '(un segundo antes de responder)'),
+    K('¿Eres nueva en la aldea? No te había visto antes.'),
+    N('Mentira.'),
+    N('La había visto cuatro veces.'),
+    N('Pero no podía decir eso.'),
+  ]},
 
-/* =========================================================================
-   BOTÓN MENÚ DE CAPÍTULOS
-   ========================================================================= */
-#toc-btn{
-  position:absolute; top:calc(14px + env(safe-area-inset-top)); right:62px;
-  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
-  background:rgba(13,13,26,0.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-  border:1px solid rgba(184,169,217,0.2); border-radius:50%; color:var(--lila);
-  cursor:pointer; z-index:50; opacity:0; transition:opacity .5s ease, background .3s ease;
-}
-#toc-btn.show{ opacity:.85; }
-#toc-btn:hover{ background:rgba(184,169,217,0.12); }
-#toc-btn svg{ width:17px; height:17px; display:block; }
+{ xml:'Hana responde sin dejar de revisar las hierbas con la mano libre. El perro olfatea a Kenzo; él intenta acariciarlo y el perro lo ignora.',
+  set:'camino', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'hold', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    H('Llegué hace un mes con mi padre.'),
+    K('¿Y cómo te ha parecido la aldea?'),
+    H('Las hierbas del mercado no están bien conservadas. Pierden propiedades.', '(lo piensa de verdad)'),
+    K('...Ah.'),
+    N('Eso no era lo que esperaba.'),
+    N('Esperaba algo sobre el clima.'),
+    N('O sobre la gente.'),
+    N('Las hierbas no.'),
+  ]},
 
-/* =========================================================================
-   MENÚ DE CAPÍTULOS (overlay)
-   ========================================================================= */
-#toc-overlay{
-  position:absolute; inset:0; z-index:60;
-  background:rgba(5,5,12,0.92); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-  display:flex; align-items:flex-end; justify-content:center;
-  opacity:0; visibility:hidden; transition:opacity .35s ease;
-}
-#toc-overlay.show{ opacity:1; visibility:visible; }
-#toc-panel{
-  width:100%; max-height:82%; overflow-y:auto; -webkit-overflow-scrolling:touch;
-  background:linear-gradient(180deg, rgba(20,18,36,0.98), rgba(9,9,18,0.99));
-  border-top:1px solid rgba(184,169,217,0.25);
-  border-radius:22px 22px 0 0;
-  padding:18px 22px calc(26px + env(safe-area-inset-bottom));
-  transform:translateY(24px); transition:transform .35s ease;
-}
-#toc-overlay.show #toc-panel{ transform:translateY(0); }
-.toc-header{
-  display:flex; align-items:center; justify-content:space-between;
-  font-family:var(--serif); font-size:13px; letter-spacing:.28em; text-transform:uppercase;
-  color:var(--melocoton); padding-bottom:14px; margin-bottom:10px;
-  border-bottom:1px solid rgba(184,169,217,0.18);
-}
-#toc-close{
-  background:none; border:none; color:var(--lila); font-size:20px; line-height:1;
-  cursor:pointer; opacity:.8; padding:2px 6px;
-}
-.toc-chapter{ margin-bottom:6px; }
-.toc-chapter-btn{
-  width:100%; text-align:left; background:none; border:none; cursor:pointer;
-  padding:12px 4px; display:flex; flex-direction:column; gap:3px;
-  border-radius:10px; transition:background .2s ease;
-}
-.toc-chapter-btn:hover, .toc-chapter-btn:active{ background:rgba(184,169,217,0.08); }
-.toc-chapter-btn .tc-num{ font-family:var(--serif); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--lila); opacity:.75; }
-.toc-chapter-btn .tc-name{ font-family:var(--serif); font-size:17px; color:var(--texto); font-weight:400; }
-.toc-sections{ display:flex; flex-direction:column; padding-left:14px; border-left:1px solid rgba(184,169,217,0.15); margin:2px 0 12px 8px; }
-.toc-section-btn{
-  text-align:left; background:none; border:none; cursor:pointer; color:rgba(240,237,232,0.72);
-  font-family:var(--body); font-size:13px; font-weight:300; letter-spacing:.02em;
-  padding:9px 6px; border-radius:8px; transition:background .2s ease, color .2s ease;
-}
-.toc-section-btn:hover, .toc-section-btn:active{ background:rgba(184,169,217,0.07); color:var(--texto); }
-.toc-section-btn.current, .toc-chapter-btn.current .tc-name{ color:var(--melocoton); }
-.toc-empty{ font-family:var(--body); font-size:13px; color:var(--lila); opacity:.7; padding:16px 4px; }
+{ xml:'Hana espera que la conversación termine. Kenzo sonríe sin querer; ella nota la sonrisa y frunce levemente el ceño, genuinamente confundida.',
+  set:'camino', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    H('¿Qué?'),
+    K('Nada. Es que... pregunté cómo te había parecido la aldea.'),
+    H('Y eso es lo que me ha parecido.'),
+    K('Las hierbas.'),
+    H('Las hierbas importan.'),
+    N('No había ironía.'),
+    N('No era un chiste.'),
+    N('Era completamente en serio.'),
+    N('Y por alguna razón eso fue lo más refrescante que alguien me había dicho en mucho tiempo.'),
+  ]},
 
-/* =========================================================================
-   REDUCE MOTION
-   ========================================================================= */
-@media (prefers-reduced-motion: reduce){
-  .petal{ display:none; }
-  .char-inner.breathe{ animation:none; }
-  .moon{ animation:none; }
-  .t-begin{ animation:none; }
-  .continue{ animation:none; }
-  .bg-fill, .chars{ transition:none; }
-}
-</style>
-</head>
-<body>
-<div id="app">
+{ xml:'Hana llama al perro con un silbido corto; el perro obedece de inmediato. Hace un pequeño gesto de despedida y sigue su camino. Kenzo se queda con el cubo.',
+  set:'camino', light:'atardecer', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'back', at:'right'}], dog:{pos:'right', dx:-30},
+  lines:[
+    N('Se fue.'),
+    N('Sin más.'),
+    N('El perro la siguió sin que nadie se lo dijera dos veces.'),
+    N('Yo me quedé parado en el camino.'),
+    N('Con el cubo.'),
+    N('Mirando hacia donde había ido.'),
+    K('Las hierbas importan.', '(en voz baja, solo para él)'),
+    N('No supe si reírme o qué.'),
+    N('Me reí.'),
+  ]},
 
-  <!-- ===================== ESCENARIO ===================== -->
-  <div class="stage" id="stage">
-    <div class="bg-layer" id="layerA"></div>
-    <div class="bg-layer" id="layerB"></div>
-  </div>
+{ xml:'Kenzo llega al río, se sienta, el cubo a su lado. El río tranquilo. Tarde de primavera.',
+  set:'rio', light:'tarde', season:'primavera', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Llegué al río y me di cuenta que no recordaba bien para qué había venido.'),
+    N('El cubo estaba vacío todavía.'),
+    N('Lo llené.'),
+    N('Me senté un rato de más.'),
+    N('Pensando en una chica que no sé cómo se llama que rechaza especias y dice que las hierbas importan.'),
+    N('Y tiene razón, probablemente.'),
+    N('Las hierbas importan.'),
+  ]},
 
-  <!-- ===================== PARTÍCULAS ===================== -->
-  <div class="particles" id="particles"></div>
+/* ============================ CAPÍTULO 2 ============================
+   "Lo que no se decide" */
+{ chapter:'Capítulo 2', chapterName:'Lo que no se decide', chapterWhen:'Primavera a otoño. Dos personas volviéndose costumbre una para la otra.',
+  lead:['Las semanas siguientes.', 'Kenzo empieza a tener muchas razones para ir al río.', 'Todas inventadas.'],
+  xml:'El río, mañana. Kenzo ya está ahí con su cubo, llegó antes de lo necesario. Hana aparece por el otro lado con su cesta de hierbas; el perro adelante.',
+  set:'rio', light:'dia', season:'primavera', opts:{tree:'sakura', ducks:true},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'hold', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Empecé a ir al río más temprano.'),
+    N('Por el agua.'),
+    N('Obviamente por el agua.'),
+    N('El cubo lo confirmaba.'),
+    N('El hecho de que llegara media hora antes de lo necesario era una coincidencia.'),
+    N('Una coincidencia que ocurría todos los días.'),
+  ]},
 
-  <!-- ===================== CAJA DE DIÁLOGO ===================== -->
-  <div id="dialogue">
-    <div class="speaker" id="speaker"></div>
-    <div class="note" id="note"></div>
-    <div class="dtext" id="dtext"></div>
-    <div class="continue" id="continue">❯</div>
-  </div>
+{ xml:'Hana llega y se sienta a unos metros. Empieza a separar hierbas sin decir nada. El perro se queda entre los dos.',
+  set:'rio', light:'dia', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Llegabas y te sentabas.'),
+    N('Sin invitarme.'),
+    N('Sin pedirme que me fuera.'),
+    N('Y empezabas con las hierbas como si fuera lo más normal del mundo que yo estuviera ahí.'),
+    N('No sé cuándo dejó de ser raro.'),
+    N('Solo dejó de serlo.'),
+  ]},
 
-  <!-- ===================== TARJETA DE CAPÍTULO ===================== -->
-  <div id="chapter-card">
-    <div class="cc-num" id="cc-num"></div>
-    <div class="cc-name" id="cc-name"></div>
-    <div class="cc-rule"></div>
-    <div class="cc-when" id="cc-when"></div>
-    <div class="cc-intro" id="cc-intro"></div>
-  </div>
+{ xml:'Kenzo intenta ayudar — recoge una hierba y se la extiende con confianza. Hana la mira. La deja en el suelo.',
+  set:'rio', light:'dia', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('¿Esta no sirve?'),
+    H('Está cortada mal.'),
+    K('¿Cómo se corta mal una hierba?'),
+    H('De muchas maneras.', '(como si la respuesta fuera obvia)'),
+    N('Dejé la hierba en el suelo.'),
+    N('No volví a recoger hierbas.'),
+    N('Aprendí rápido en eso.'),
+  ]},
 
-  <!-- ===================== INTERLUDIO ===================== -->
-  <div id="break-screen"><div class="break-text"></div></div>
+{ xml:'Los dos en silencio. El río. El perro dormido.',
+  set:'rio', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Nos quedábamos en silencio seguido.'),
+    N('Para mí el silencio siempre fue algo que había que llenar.'),
+    N('Con ella era diferente.'),
+    N('No pesaba.'),
+    N('Solo era silencio.'),
+    N('Así que lo dejé estar.'),
+    N('Que para mí seguía siendo mucho.'),
+  ]},
 
-  <!-- ===================== FIN ===================== -->
-  <div id="end-screen">
-    <div class="end-kanji">終</div>
-    <div class="end-sign">— DISTANCIA</div>
-    <button class="end-again" id="end-again">Volver a empezar</button>
-  </div>
+{ xml:'Kenzo no aguanta más. Abre la boca.',
+  set:'rio', light:'tarde', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Hana.'),
+    H('¿Qué?', '(sin levantar la vista)'),
+    K('¿Cómo sabes cuándo una hierba está mal cortada?'),
+    H('Por el corte.', '(pausa)'),
+    K('Eso no me ayuda.'),
+    H('Lo sé.'),
+    N('No sé si fue un chiste.'),
+    N('Nunca supe con certeza.'),
+    N('Pero me reí.'),
+    N('Ella siguió con las hierbas.'),
+  ]},
 
-  <!-- ===================== BOTÓN MUTE ===================== -->
-  <div id="mute" title="Silenciar / activar audio">
-    <svg id="mute-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a8.5 8.5 0 0 1 0 12"/>
-    </svg>
-  </div>
+{ lead:['Días después.', 'Las escaleras del templo.'],
+  xml:'Hana sentada en las escaleras del templo doblando papel de arroz. Varios terminados a su lado. El perro a sus pies. Kenzo pasaba por ahí y se detiene.',
+  set:'templo', light:'tarde', season:'primavera', opts:{night:false},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'right', dx:-30},
+  lines:[
+    N('La encontré en las escaleras del templo un día.'),
+    N('Doblando papel.'),
+    N('Con esa seriedad que le ponía a todo.'),
+    N('Me senté sin que nadie me lo ofreciera.'),
+    N('Como siempre.'),
+  ]},
 
-  <!-- ===================== BOTÓN MENÚ DE CAPÍTULOS ===================== -->
-  <div id="toc-btn" title="Ir a capítulo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/>
-    </svg>
-  </div>
+{ xml:'Kenzo observa. Hana termina una figura, la examina. Algo está un milímetro torcido, invisible para cualquiera. La deshace. Empieza de nuevo.',
+  set:'templo', light:'tarde', season:'primavera', opts:{night:false},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    K('¿Por qué la deshiciste? Estaba bien.'),
+    H('No estaba bien.'),
+    K('Yo no vi nada mal.'),
+    H('Por eso tú no la estás haciendo.'),
+    N('No tuve respuesta para eso.'),
+    N('Porque era verdad.'),
+  ]},
 
-  <!-- ===================== MENÚ DE CAPÍTULOS ===================== -->
-  <div id="toc-overlay">
-    <div id="toc-panel">
-      <div class="toc-header">
-        <span>Ir a un capítulo</span>
-        <button id="toc-close" aria-label="Cerrar">✕</button>
-      </div>
-      <div id="toc-list"></div>
-    </div>
-  </div>
+{ xml:'Kenzo decide demostrar que tiene paciencia. Se cruza de brazos. Se queda callado. Hana sigue doblando. Treinta segundos. Un minuto.',
+  set:'templo', light:'tarde', season:'primavera', opts:{night:false},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    N('Me propuse quedarme callado para demostrar algo.'),
+    N('No sé exactamente qué.'),
+    N('A los dos minutos casi pregunté si las figuras tenían nombres.'),
+    N('Me lo aguanté.'),
+    N('A los tres minutos casi pregunté cuántas podía hacer en un día.'),
+    N('También me lo aguanté.'),
+    N('A los cuatro minutos ella dijo:'),
+    H('Ya puedes preguntar lo que quieras.'),
+    K('¿Cómo supiste?'),
+    H('Llevas cuatro minutos respirando diferente.'),
+    N('No supe qué hacer con esa información.'),
+    N('Pero me gustó que me hubiera notado.'),
+  ]},
 
-  <!-- ===================== TÍTULO ===================== -->
-  <div id="title-screen">
-    <div class="sky-fill">
-      <svg viewBox="0 0 430 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-        <!-- estrellas -->
-        <g fill="#d7d0ee">
-          <circle cx="50" cy="120" r="1.4" opacity="0.8"/><circle cx="110" cy="70" r="1" opacity="0.5"/>
-          <circle cx="380" cy="90" r="1.3" opacity="0.7"/><circle cx="340" cy="180" r="1" opacity="0.5"/>
-          <circle cx="70" cy="240" r="1.1" opacity="0.6"/><circle cx="400" cy="260" r="1.2" opacity="0.6"/>
-          <circle cx="200" cy="60" r="1" opacity="0.5"/><circle cx="260" cy="120" r="1.1" opacity="0.6"/>
-        </g>
-        <!-- montañas lejanas -->
-        <path d="M0 560 L70 470 L150 555 L240 460 L320 550 L390 480 L430 555 L430 640 L0 640 Z" fill="#1c2150" opacity="0.85"/>
-        <path d="M0 610 L100 520 L200 600 L300 510 L400 595 L430 560 L430 720 L0 720 Z" fill="#2a2a58" opacity="0.9"/>
-        <!-- niebla baja -->
-        <rect x="0" y="640" width="430" height="120" fill="#3a3568" opacity="0.4"/>
-        <!-- pagoda silueta -->
-        <g fill="#0f1230" transform="translate(330 470)">
-          <rect x="-5" y="60" width="10" height="60"/>
-          <path d="M-30 60 L30 60 L20 44 L-20 44 Z"/>
-          <path d="M-25 44 L25 44 L16 30 L-16 30 Z"/>
-          <path d="M-19 30 L19 30 L11 16 L-11 16 Z"/>
-          <path d="M-13 16 L13 16 L7 2 L-7 2 Z"/>
-          <rect x="-2" y="-8" width="4" height="10"/>
-        </g>
-        <!-- suelo -->
-        <rect x="0" y="720" width="430" height="180" fill="#0c0f28"/>
-        <!-- cerezo silueta en flor -->
-        <g transform="translate(-10 560) scale(1.4)">
-          <path d="M30 120 q-6 -60 4 -96" stroke="#241b2e" stroke-width="7" fill="none"/>
-          <g fill="#5a4768" opacity="0.85"><circle cx="10" cy="14" r="26"/><circle cx="40" cy="2" r="30"/><circle cx="68" cy="20" r="26"/><circle cx="40" cy="22" r="26"/></g>
-        </g>
-      </svg>
-    </div>
-    <div class="moon"></div>
-    <div class="title-wrap">
-      <div class="kanji">距離</div>
-      <div class="romaji">Distancia</div>
-      <div class="t-rule"></div>
-      <div class="t-sub" id="t-sub">Una historia que ya has vivido antes.</div>
-      <button class="t-begin" id="begin">COMENZAR</button>
-      <button class="t-resume" id="resume">continuar donde lo dejaste</button>
-      <button class="t-resume" id="toc-open-title">ir a un capítulo</button>
-    </div>
-  </div>
+{ lead:['El festival menor de la aldea.'],
+  xml:'Festival. Linternas, música, gente. Kenzo adentro en su elemento total. La busca sin proponérselo; no está.',
+  set:'festival', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('El festival de mitad de primavera era el más chico del año.'),
+    N('Pero en Kuromi cualquier razón para poner linternas era bienvenida.'),
+    N('Yo estaba adentro, como siempre.'),
+    N('En mi elemento.'),
+    N('Y sin querer la busqué entre la gente.'),
+    N('No estaba.'),
+    N('Supe exactamente dónde buscar.'),
+  ]},
 
-</div>
+{ xml:'Hana en el puente de piedra. Tranquila. El perro a su lado. El festival a lo lejos.',
+  set:'puente', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'right', dx:-10},
+  lines:[
+    K('¿No entras?'),
+    H('Estoy bien aquí.'),
+    K('Hay bastante gente adentro.'),
+    H('Lo sé.'),
+    K('¿No te gusta la gente?'),
+    H('Me gusta la gente. No me gusta mucha gente junta en un espacio chico.'),
+    K('Es un festival.'),
+    H('Exacto.'),
+    N('Me senté en el puente sin que me lo ofrecieran.'),
+    N('Como siempre.'),
+    N('Le hizo un pequeño espacio al perro para que no estuviera entre los dos.'),
+    N('No sé si fue intencional.'),
+    N('Probablemente no lo iba a admitir.'),
+  ]},
 
-<!-- arte y guión -->
-<script src="art.js"></script>
-<script src="story.js"></script>
-<script>
-/* =========================================================================
-   DISTANCIA — Motor
-   ========================================================================= */
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const SAVE_KEY = 'distancia_progress_v5';
+{ xml:'Los dos en el puente. Kenzo señala cosas que pasan adentro — el señor Tanaka bailando mal. Hana mira con más interés del que admite.',
+  set:'puente', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Mira al señor Tanaka.'),
+    H('¿Qué tiene?', '(sin voltear del todo)'),
+    K('Está bailando.'),
+    H('Ah.'),
+    K('Muy mal.'),
+    H('¿Qué tan mal?', '(voltea apenas)'),
+    K('Bastante.'),
+    N('Te giraste un poco más para verlo mejor.'),
+    N('Pero muy despacio.'),
+    N('Como si no quisieras que yo notara que querías ver.'),
+    N('Lo noté.'),
+    N('No dije nada.'),
+  ]},
 
-/* refs */
-const app       = document.getElementById('app');
-const layers    = [document.getElementById('layerA'), document.getElementById('layerB')];
-const dialogue  = document.getElementById('dialogue');
-const speakerEl = document.getElementById('speaker');
-const noteEl    = document.getElementById('note');
-const dtextEl   = document.getElementById('dtext');
-const continueEl= document.getElementById('continue');
-const chapterCard = document.getElementById('chapter-card');
-const titleScreen = document.getElementById('title-screen');
-const endScreen   = document.getElementById('end-screen');
-const muteBtn   = document.getElementById('mute');
+{ xml:'El perro, aburrido, se mete entre los dos de nuevo. Se echa encima del pie de Kenzo.',
+  set:'puente', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('El perro se metió entre los dos y se echó encima de mi pie.'),
+    N('No me moví para no despertarlo.'),
+    H('Puedes moverlo.'),
+    K('Ya sé. Pero no me molesta.'),
+    H('Le haces muy fácil la vida.', '(lo mira un momento)'),
+    K('¿Y eso está mal?'),
+    H('No.', '(regresa a ver el festival)'),
+    N('Creo que eso tampoco era solo sobre el perro.'),
+  ]},
 
-let cur = { p:0, l:0 };      // página / línea actual
-let activeLayer = 0;
-let typing = false, typeTimer = null;
-let started = false, busy = false;
+{ lead:['Semanas después.', 'El río del norte.'],
+  xml:'Los dos caminando al río del norte, más lejos, entre árboles. El perro adelante. Hana explicando algo sobre las plantas mientras camina.',
+  set:'camino', light:'dia', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'hold', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Me mandaste una nota diciendo que las hierbas del río del norte eran mejores.'),
+    N('Y que si quería acompañarte, podía.'),
+    N('Una invitación de cuatro palabras disfrazada de información botánica.'),
+    N('Fui obviamente.'),
+  ]},
 
-/* =========================================================================
-   PARTÍCULAS — varían por estación (pétalos / motas / hojas / nieve)
-   ========================================================================= */
-let currentSeason = null;
-function particleSVG(season){
-  if(season==='otono')    return `<svg viewBox="0 0 20 20"><path d="M10 2 C12 7 18 8 18 8 C14 10 13 16 10 18 C7 16 6 10 2 8 C2 8 8 7 10 2 Z" fill="#d9833a" opacity="0.92"/></svg>`;
-  if(season==='invierno') return `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="4.5" fill="#eef2f6" opacity="0.92"/></svg>`;
-  if(season==='verano')   return `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.6" fill="#fbe7bf" opacity="0.9"/></svg>`;
-  return `<svg viewBox="0 0 20 20"><path d="M10 1 C13 4 17 6 17 11 C17 15 13 18 10 19 C7 18 3 15 3 11 C3 6 7 4 10 1 Z" fill="#e8c9d8" opacity="0.9"/></svg>`;
-}
-function buildParticles(season){
-  currentSeason = season;
-  const cont = document.getElementById('particles');
-  cont.innerHTML = '';
-  if(reduceMotion || !season) return;
-  const svg = particleSVG(season);
-  const n = season==='invierno' ? 15 : 11;
-  for(let i=0;i<n;i++){
-    const p = document.createElement('div'); p.className='petal';
-    const size = 8 + Math.random()*11;
-    p.style.left = (Math.random()*100)+'%';
-    p.style.width = size+'px'; p.style.height = size+'px';
-    p.style.setProperty('--dx', ((season==='invierno'?10:20) + Math.random()*70)+'px');
-    p.style.setProperty('--op', (0.3 + Math.random()*0.3).toFixed(2));
-    const dur = (season==='invierno'?14:12) + Math.random()*10;
-    p.style.animationDuration = dur+'s';
-    p.style.animationDelay = (-Math.random()*dur)+'s';
-    p.innerHTML = svg; cont.appendChild(p);
-  }
-}
-buildParticles('primavera');
+{ xml:'A la orilla del río del norte. Hana recoge hierbas. Kenzo intenta ayudar — mejor que antes pero no mucho. Ella le dice que huela.',
+  set:'rio', light:'dia', season:'verano', opts:{tree:'sakura', ducks:true, hill:'#7e8f5a', frontBank:'#8aa066'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'hold', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    H('Esta sí.'),
+    K('¿Y esta?'),
+    H('No.'),
+    K('¿Por qué no? Se ve igual que la otra.'),
+    H('No se ve igual.'),
+    K('Para mí sí.'),
+    H('Huélelas.', '(decide algo)'),
+    N('Las olí. No distinguí nada. Pero no lo iba a admitir.'),
+    K('Ah. Sí. Esta huele diferente.'),
+    H('¿A qué huele diferente?'),
+    K('A... más verde.', '(pausa larga)'),
+    H('A más verde.', '(lo mira)'),
+    K('Sí.'),
+    N('No dijo nada.'),
+    N('Pero hubo algo en su cara que no había visto antes.'),
+    N('Creo que fue la primera vez que casi se rió de algo que yo dije.'),
+    N('Casi.'),
+  ]},
 
-/* =========================================================================
-   AUDIO — pad ambient (Am) con LFO
-   ========================================================================= */
-let audioCtx=null, padGain=null, audioStarted=false, audioMuted=false;
-function initAudio(){
-  if(audioStarted) return; audioStarted=true;
-  try{
-    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    padGain = audioCtx.createGain(); padGain.gain.value=0.05; padGain.connect(audioCtx.destination);
-    const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900; lp.Q.value=0.4; lp.connect(padGain);
-    [[220,-6,'sine',1],[329.63,4,'sine',1],[440,-3,'triangle',0.5]].forEach(([f,d,type,g])=>{
-      const o=audioCtx.createOscillator(); o.type=type; o.frequency.value=f; o.detune.value=d;
-      const og=audioCtx.createGain(); og.gain.value=g; o.connect(og); og.connect(lp); o.start();
-    });
-    const lfo=audioCtx.createOscillator(); lfo.frequency.value=0.05;
-    const lg=audioCtx.createGain(); lg.gain.value=0.022; lfo.connect(lg); lg.connect(padGain.gain); lfo.start();
-  }catch(e){}
-}
+{ xml:'Sentados a la orilla. Silencio cómodo. El perro duerme.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('¿Por qué siempre doblas el papel igual?'),
+    H('Porque si lo doblas diferente cada vez, al final no sabes dónde está lo importante.', '(piensa antes de responder)'),
+    N('Me quedé pensando en eso más tiempo del que esperaba.'),
+    N('Podía ser sobre el papel.'),
+    N('O podía no ser solo sobre el papel.'),
+    N('Con ella nunca estaba completamente seguro.'),
+  ]},
 
-/* =========================================================================
-   VOZ — Web Speech API (es-MX)
-   ========================================================================= */
-let voicePref=null, speechMuted=false;
-function pickVoice(){
-  const v = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-  if(!v.length) return;
-  voicePref =
-    v.find(x=>/es/i.test(x.lang) && /paulina/i.test(x.name)) ||
-    v.find(x=>/es/i.test(x.lang) && /female|mujer/i.test(x.name)) ||
-    v.find(x=>/google espa/i.test(x.name)) ||
-    v.find(x=>/es-MX/i.test(x.lang)) ||
-    v.find(x=>/^es/i.test(x.lang)) || null;
-}
-if(window.speechSynthesis){ pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(text){
-  if(speechMuted || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang='es-MX'; if(voicePref) u.voice=voicePref;
-  u.rate=0.85; u.pitch=1.05; u.volume=0.9;
-  window.speechSynthesis.speak(u);
-}
-function stopSpeak(){ if(window.speechSynthesis) window.speechSynthesis.cancel(); }
+{ xml:'Kenzo intenta doblar una hoja del suelo. Queda torcida. Hana se acerca y le mueve los dedos a donde deben estar.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    H('¿Qué estás haciendo?'),
+    K('Practicando.'),
+    H('¿El qué?'),
+    K('El doblez ese del inicio.'),
+    H('Eso no es el doblez del inicio.'),
+    K('Por eso estoy practicando.'),
+    N('Se acercó.'),
+    N('Sin decir nada, movió mis dedos a donde debían estar.'),
+    N('El doblez quedó mejor.'),
+    N('No perfecto.'),
+    N('Pero yo en ese momento estaba pensando en otra cosa completamente.'),
+    N('Y fue cuando entendí que tenía un problema serio.'),
+  ]},
 
-/* =========================================================================
-   RENDER DE ESCENA (crossfade A/B)
-   ========================================================================= */
-/* intérprete de etiquetas: who + pose -> clave de arte */
-const POSE_MAP = {
-  kenzo:   { stand:'el',   sit:'elSit',   back:'elBack',  work:'el', bag:'kenzoBag' },
-  hana:    { stand:'ella', sit:'ellaSit', back:'ellaBack', hold:'ellaHold', bow:'hanaBow', curly:'ellaRizado' },
-  padre:   { stand:'padre', sit:'padre',  work:'padre' },
-  hiro:    { stand:'hiro',  sit:'hiro' },
-  maestro: { stand:'maestro', work:'maestro', sit:'maestro' },
-  daisuke: { stand:'daisuke', sit:'daisuke' },
-};
-function castToChar(c){
-  const m = POSE_MAP[c.who] || {};
-  const key = m[c.pose || 'stand'] || m.stand || c.who;
-  const seated = (c.pose==='sit' || c.pose==='work' || c.pose==='curly' || c.who==='padre' || /Sit$/.test(key) || key==='ellaRizado');
-  const defW = ({stand:'47%', sit:'50%', back:'48%', hold:'48%', work:'50%', curly:'50%'})[c.pose||'stand'] || '48%';
-  return { key, pos:c.at||'center', sit:seated, dim:!!c.dim, width:c.w||c.width||defW, dx:c.dx, bottom:c.bottom };
-}
-function charArtKey(c){
-  if(c.sit){ if(c.key==='ella') return 'ellaSit'; if(c.key==='el') return 'elSit'; }
-  return c.key;
-}
-function charHTML(c){
-  const pos = c.pos||'center';
-  let style = '';
-  if(c.width)  style += `width:${c.width};`;
-  if(c.bottom) style += `bottom:${c.bottom};`;
-  if(c.sit && !c.bottom) style += 'bottom:30%;';
-  if(c.dx){
-    style += (pos==='center')
-      ? `transform:translateX(calc(-50% + ${c.dx}px));`
-      : `transform:translateX(${c.dx}px);`;
-  }
-  const dim = c.dim ? ' dim' : '';
-  const breathe = reduceMotion ? '' : ' breathe';
-  return `<div class="character ${pos}${dim}" style="${style}">
-            <div class="char-inner${breathe}">${CHARACTERS[charArtKey(c)]||''}</div>
-          </div>`;
-}
-function dogHTML(d){
-  if(!d) return '';
-  const o = (d===true) ? {} : d;
-  const pos = o.pos||'center';
-  let style = '';
-  if(o.dx){
-    style += (pos==='center')
-      ? `transform:translateX(calc(-50% + ${o.dx}px));`
-      : `transform:translateX(${o.dx}px);`;
-  }
-  const breathe = reduceMotion ? '' : ' breathe';
-  return `<div class="dog ${pos}" style="${style}"><div class="char-inner${breathe}">${CHARACTERS.perro}</div></div>`;
-}
-function propHTML(name){
-  if(!name || !PROPS[name]) return '';
-  return `<div class="prop">${PROPS[name]}</div>`;
-}
-function skyFor(page){
-  if(page.light==='otono')    return SKY.otono;
-  if(page.light==='invierno') return SKY.invierno;
-  if(page.light==='dia' && page.season==='verano') return SKY.diaVerano;
-  return SKY[page.light] || SKY.dia;
-}
-function sceneHTML(page){
-  const bgName = page.set || page.bg;
-  const bg = BACKGROUNDS[bgName](skyFor(page), page.opts||{});
-  // reparto: prefiere `cast` (etiquetas who/pose); compatibilidad con `chars`
-  const castArr = page.cast ? page.cast.map(castToChar) : (page.chars || []);
-  const chars = castArr.map(charHTML).join('') + dogHTML(page.dog) + propHTML(page.prop);
-  return `<div class="bg-fill">${bg}</div>
-          <div class="chars">${chars}</div>
-          <div class="bg-tint ${page.light}"></div>`;
-}
-/* sets interiores / contemplativos: sin partículas cayendo */
-const NO_PARTICLE_SETS = ['taller','cuarto','techo','cocina'];
-function renderPage(page){
-  const bgName = page.set || page.bg;
-  const seas = NO_PARTICLE_SETS.includes(bgName) ? null : (page.season || null);
-  if(seas !== currentSeason) buildParticles(seas);
-  return new Promise(resolve=>{
-    const incoming = layers[1-activeLayer];
-    incoming.innerHTML = sceneHTML(page);
-    void incoming.offsetWidth;              // reflow para asegurar el fade
-    incoming.classList.add('visible');
-    layers[activeLayer].classList.remove('visible');
-    activeLayer = 1-activeLayer;
-    setTimeout(()=> resolve(), reduceMotion ? 0 : 660);
-  });
-}
+{ lead:['El juego de piedras.', 'Una tarde de verano.'],
+  xml:'Los dos en el río. Kenzo saca unas piedras planas — un juego de posición que todos en Kuromi saben jugar. Lo pone entre los dos.',
+  set:'rio', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'piedras',
+  lines:[
+    N('Un día llevé un juego.'),
+    N('Piedras planas.'),
+    N('Un juego de posición que todo mundo en Kuromi sabía jugar.'),
+    N('O casi todo mundo.'),
+  ]},
 
-/* =========================================================================
-   TARJETA DE CAPÍTULO
-   ========================================================================= */
-function showChapterCard(page){
-  document.getElementById('cc-num').textContent  = page.chapter;
-  document.getElementById('cc-name').textContent = page.chapterName;
-  const whenEl  = document.getElementById('cc-when');
-  const introEl = document.getElementById('cc-intro');
-  if(page.intro && page.intro.length){
-    whenEl.style.display = 'none';
-    introEl.style.display = 'flex';
-    introEl.innerHTML = page.intro.map(l=>`<div class="ci-line">${l}</div>`).join('');
-  } else {
-    introEl.style.display = 'none';
-    introEl.innerHTML = '';
-    whenEl.style.display = 'block';
-    whenEl.textContent = page.chapterWhen || '';
-  }
-  return new Promise(resolve=>{
-    chapterCard.classList.add('show');
-    const hold = reduceMotion ? 700 : (2600 + (page.intro? page.intro.length*300 : 0));
-    setTimeout(()=>{
-      chapterCard.classList.remove('show');
-      setTimeout(resolve, reduceMotion ? 0 : 700);
-    }, hold);
-  });
-}
+{ xml:'Kenzo explica las reglas. Hana escucha con atención. Empiezan a jugar. Hana es malísima.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'piedras',
+  lines:[
+    N('Explicaste las reglas y empezamos.'),
+    N('Y descubrí algo en los primeros tres minutos:'),
+    N('Hana era malísima.'),
+    N('No un poco.'),
+    N('Considerablemente.'),
+  ]},
 
-/* =========================================================================
-   DIÁLOGO + TYPEWRITER
-   ========================================================================= */
-function showLine(){
-  const line = STORY[cur.p].lines[cur.l];
-  const isNarr = line.s === 'narrador';
-  const isBeat = line.s === 'beat';
-  dialogue.classList.toggle('narrador', isNarr || isBeat);
-  dialogue.classList.toggle('beat', isBeat);
-  speakerEl.textContent = (isNarr||isBeat) ? '' : line.s;
-  const showNote = (!isNarr && !isBeat && line.note);
-  noteEl.textContent = showNote ? line.note : '';
-  noteEl.style.display = showNote ? 'block' : 'none';
-  continueEl.classList.remove('show');
-  dialogue.classList.add('show');
-  typeText(dtextEl, line.t, ()=> continueEl.classList.add('show'));
-  if(!isBeat) speak(line.t);
-  save();
-}
-function typeText(target, text, done){
-  clearInterval(typeTimer); typing=true; target.innerHTML='';
-  const caret=document.createElement('span'); caret.className='caret'; target.appendChild(caret);
-  if(reduceMotion){ caret.remove(); target.textContent=text; typing=false; done&&done(); return; }
-  let i=0;
-  typeTimer = setInterval(()=>{
-    if(i>=text.length){ clearInterval(typeTimer); typing=false; caret.classList.add('hidden'); done&&done(); return; }
-    caret.insertAdjacentText('beforebegin', text[i]); i++;
-  }, 42);
-}
-function finishTyping(){
-  clearInterval(typeTimer); typing=false;
-  dtextEl.textContent = STORY[cur.p].lines[cur.l].t;
-  continueEl.classList.add('show');
-}
+{ xml:'Kenzo gana fácilmente. Hana mira el tablero con su cara analítica, pero el análisis no llega a ningún lado.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'piedras',
+  lines:[
+    K('¿Quieres otra?'),
+    H('Sí.', '(estudiando las piedras)'),
+    N('Jugamos cuatro veces.'),
+    N('Gané las cuatro. Fácil.'),
+    N('Hana no era de las que se rendían.'),
+    N('Pero tampoco mejoraba tan rápido en esto.'),
+    N('Y lo que me pareció interesante fue que no le molestó perder.'),
+    N('Solo seguía viendo el tablero como un problema de hierbas que eventualmente iba a resolver.'),
+  ]},
 
-/* =========================================================================
-   AVANCE
-   ========================================================================= */
-async function advance(){
-  if(!started || busy) return;
-  if(typing){ finishTyping(); return; }
-  stopSpeak();
+{ xml:'Quinta partida. Kenzo le ayuda discretamente para que dure más. Hana lo nota.',
+  set:'rio', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'piedras',
+  lines:[
+    K('Otra vez.'),
+    H('¿Me estás ayudando?', '(sin levantar la vista del tablero)'),
+    K('No.'),
+    H('Kenzo.', '(lo mira)'),
+    K('Solo un poco.'),
+    H('No hagas eso.'),
+    K('¿Por qué no? Si no te ayudo pierdes en dos minutos.'),
+    H('Lo sé. Pero prefiero perder sola que ganar con ayuda.'),
+    N('Eso también lo guardé.'),
+    N('Porque decía mucho sobre cómo era ella.'),
+  ]},
 
-  const page = STORY[cur.p];
-  if(cur.l < page.lines.length-1){
-    cur.l++; showLine(); return;
-  }
-  // fin de página → siguiente
-  if(cur.p < STORY.length-1){
-    busy = true;
-    const finished = STORY[cur.p];
-    cur.p++; cur.l=0;
-    const next = STORY[cur.p];
-    dialogue.classList.remove('show');
-    await wait(reduceMotion?0:360);
-    if(finished.breakText) await showBreak(finished.breakText);
-    if(next.chapter) await showChapterCard(next);
-    if(next.lead) await showBreak(next.lead);
-    await renderPage(next);
-    await wait(reduceMotion?0:120);
-    busy = false;
-    showLine();
-  } else {
-    const finished = STORY[cur.p];
-    if(finished.breakText){
-      busy = true;
-      dialogue.classList.remove('show');
-      await wait(reduceMotion?0:360);
-      await showBreak(finished.breakText);
-      busy = false;
-    }
-    runEnding();
-  }
-}
-function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+{ lead:['El día de los temperamentos.'],
+  xml:'Kenzo llega al río con un papel — un texto que dejó un viajero, sobre tipos de temperamento de un filósofo del continente. Se lo extiende a Hana.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'note',
+  lines:[
+    N('Un viajero dejó un texto en el taller.'),
+    N('Sobre tipos de temperamento.'),
+    N('No sé por qué lo llevé al río.'),
+    N('Mentira, sí sé.'),
+    N('Lo llevé porque cuando lo leí pensé en Hana en cada segunda línea.'),
+  ]},
 
-/* interludio / tarjeta de tiempo en negro (acepta string o array de líneas) */
-function showBreak(content){
-  const el = document.getElementById('break-screen');
-  const lines = Array.isArray(content) ? content : [content];
-  el.querySelector('.break-text').innerHTML = lines.map(l=>`<div class="bc-line">${l}</div>`).join('');
-  return new Promise(res=>{
-    el.classList.add('show');
-    const hold = reduceMotion ? 700 : (1600 + lines.length*500);
-    setTimeout(()=>{
-      el.classList.remove('show');
-      setTimeout(res, reduceMotion ? 0 : 800);
-    }, hold);
-  });
-}
+{ xml:'Hana lo lee completo, sin prisa. Kenzo espera. Luego se lo devuelve.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    N('Lo leíste completo.'),
+    N('Que con Hana significaba que algo le importó.'),
+    N('Cuando algo no le importaba, lo devolvía rápido.'),
+    K('¿Qué piensas?'),
+    H('¿Por qué me lo trajiste?', '(pausa)'),
+    K('Porque dice que un tipo y otro tipo funcionan bien juntos.'),
+    H('Lo leí.'),
+    K('¿Y?'),
+    H('Es un texto viejo de alguien que no nos conoce.', '(mira el río)'),
+    K('Sí. Pero acierta bastante.'),
+    H('En algunas cosas.'),
+    K('¿En cuáles?'),
+    H('En que uno complementa lo que al otro le falta.'),
+    N('No dijiste más. Yo tampoco.'),
+    N('El río siguió corriendo.'),
+    N('Y los dos nos quedamos con lo que eso significaba.'),
+    N('Sin nombrarlo. Que también era nuestra manera.'),
+  ]},
 
-/* =========================================================================
-   PARALLAX
-   ========================================================================= */
-function applyParallax(cx, cy){
-  if(reduceMotion) return;
-  const r = app.getBoundingClientRect();
-  const nx = ((cx-r.left)/r.width - 0.5), ny = ((cy-r.top)/r.height - 0.5);
-  const layer = layers[activeLayer];
-  const fill = layer.querySelector('.bg-fill'), chars = layer.querySelector('.chars');
-  if(fill)  fill.style.transform  = `translate(${-nx*8}px, ${-ny*5}px)`;
-  if(chars) chars.style.transform = `translate(${-nx*16}px, ${-ny*8}px)`;
-}
+{ lead:['El día que Kenzo intentó cocinar.'],
+  xml:'Cocina de la casa de Kenzo, el taller al fondo. Él en la cocina con ingredientes sobre la mesa, decidido a preparar algo. El perro mirándolo.',
+  set:'cocina', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}], dog:{pos:'right', dx:-30},
+  lines:[
+    N('Un día decidí cocinar.'),
+    N('No sé bien qué me dio esa idea.'),
+    N('Hana siempre traía comida.'),
+    N('Y yo pensé: puedo hacer eso.'),
+    N('No puedo hacer eso.'),
+  ]},
 
-/* =========================================================================
-   FIN
-   ========================================================================= */
-function runEnding(){
-  stopSpeak();
-  dialogue.classList.remove('show');
-  layers.forEach(l=> l.classList.remove('visible'));
-  endScreen.classList.add('show');
-  const incomplete = (window.STORY_COMPLETE === false);
-  const kanjiEl = endScreen.querySelector('.end-kanji');
-  const signEl  = endScreen.querySelector('.end-sign');
-  const againEl = endScreen.querySelector('.end-again');
-  if(incomplete){
-    kanjiEl.textContent = '続く';
-    signEl.textContent  = 'Continuará · Capítulos 3 a 5 próximamente';
-    againEl.textContent = 'Volver a empezar';
-  } else {
-    kanjiEl.textContent = '終';
-    signEl.textContent  = '— DISTANCIA';
-  }
-  clearSave();
-  setTimeout(()=> kanjiEl.classList.add('show'), 900);
-  setTimeout(()=> signEl.classList.add('show'), 2600);
-  setTimeout(()=> againEl.classList.add('show'), 4200);
-}
+{ xml:'Kenzo cocinando con demasiada confianza para alguien que no cocina. El perro lo sigue. El resultado huele raro.',
+  set:'cocina', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}], dog:{pos:'left', dx:30},
+  lines:[
+    N('El problema no fue el ingrediente.'),
+    N('El problema fue la proporción.'),
+    N('Y el orden.'),
+    N('Y el tiempo.'),
+    N('Básicamente todo.'),
+  ]},
 
-/* =========================================================================
-   MENÚ DE CAPÍTULOS (índice + saltos manuales)
-   ========================================================================= */
-const tocBtn      = document.getElementById('toc-btn');
-const tocOverlay  = document.getElementById('toc-overlay');
-const tocList     = document.getElementById('toc-list');
-const tocOpenTitle= document.getElementById('toc-open-title');
+{ xml:'Hana llega. Entra. Huele algo. Mira a Kenzo. Mira la olla. Mira a Kenzo otra vez.',
+  set:'cocina', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    H('¿Qué es eso?'),
+    K('Comida.'),
+    H('¿Seguro?', '(se acerca a ver)'),
+    K('Está bien. Solo necesita un poco más de tiempo.'),
+    H('¿Cuánto pusiste de esto?', '(lo huele con cuidado)'),
+    K('Lo suficiente.'),
+    H('¿Cuánto es lo suficiente?'),
+    K('...Lo que me pareció suficiente.'),
+    N('Cerró los ojos un segundo.'),
+    N('Como cuando algo te estresa pero decides no decirlo.'),
+    N('Luego los abrió.'),
+    N('Y empezó a corregir.'),
+  ]},
 
-/* recorta una xml/lead a una etiqueta corta y legible para la lista */
-function shortLabel(text, max){
-  if(!text) return '';
-  const t = text.trim();
-  return t.length > max ? t.slice(0, max-1).trim()+'…' : t;
-}
+{ xml:'Hana en la cocina, en su elemento. Reorganiza, agrega, ajusta. Kenzo la mira. El perro roba algo de la mesa.',
+  set:'cocina', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'left', dx:-10},
+  lines:[
+    N('El perro se robó algo de la mesa mientras los dos veíamos la olla.'),
+    N('Ninguno lo vio a tiempo.'),
+    H('Tu perro se robó el jengibre.', '(sin voltear)'),
+    K('No es mi perro.'),
+    H('Te sigue a ti.'),
+    K('Te sigue a ti más.'),
+    H('Cuando hay comida te sigue a ti.', '(lo mira)'),
+    N('Eso era verdad. No tenía respuesta.'),
+  ]},
 
-/* construye la tabla de contenidos a partir de STORY:
-   - un capítulo empieza donde page.chapter existe
-   - dentro de cada capítulo, cada page.lead marca una "escena/división" navegable
-     (salto de tiempo o lugar), salvo la propia página de apertura del capítulo */
-let TOC = null;
-function buildTOC(){
-  const toc = [];
-  let chapter = null;
-  STORY.forEach((page, i) => {
-    if(page.chapter){
-      chapter = { index:i, num:page.chapter, name:page.chapterName, sections:[] };
-      toc.push(chapter);
-    }
-    if(page.lead && chapter && i !== chapter.index){
-      chapter.sections.push({ index:i, label: shortLabel(page.lead.join(' · '), 46) });
-    }
-  });
-  return toc;
-}
+{ xml:'Hana termina de corregir la olla. Sirve. Se lo da a Kenzo. Lo prueba. Es bueno.',
+  set:'cocina', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    K('Está muy bueno.'),
+    H('Lo sé.'),
+    K('O sea, yo puse los ingredientes.'),
+    H('Yo los arreglé.'),
+    K('Fue trabajo en equipo.'),
+    H('Kenzo.', '(lo mira)'),
+    K('¿Qué?'),
+    H('No fue trabajo en equipo.'),
+    N('Comimos los dos.'),
+    N('El perro también, aunque nadie se lo ofreció.'),
+    N('Y yo decidí que eso había sido trabajo en equipo de todas formas.'),
+    N('Solo no lo dije en voz alta.'),
+  ]},
 
-function renderTOC(){
-  if(!TOC) TOC = buildTOC();
-  tocList.innerHTML = '';
-  if(!TOC.length){ tocList.innerHTML = '<div class="toc-empty">Todavía no hay capítulos disponibles.</div>'; return; }
-  TOC.forEach(ch=>{
-    const wrap = document.createElement('div'); wrap.className='toc-chapter';
-    const isCurCh = cur.p >= ch.index && (toc_nextIndex(ch) === -1 || cur.p < toc_nextIndex(ch));
-    const btn = document.createElement('button');
-    btn.className = 'toc-chapter-btn' + (isCurCh ? ' current' : '');
-    btn.innerHTML = `<span class="tc-num">${ch.num}</span><span class="tc-name">${ch.name||''}</span>`;
-    btn.addEventListener('click', (e)=>{ e.stopPropagation(); jumpToPage(ch.index); });
-    wrap.appendChild(btn);
-    if(ch.sections.length){
-      const secWrap = document.createElement('div'); secWrap.className='toc-sections';
-      ch.sections.forEach(sec=>{
-        const sBtn = document.createElement('button');
-        sBtn.className = 'toc-section-btn' + (cur.p===sec.index ? ' current' : '');
-        sBtn.textContent = sec.label || 'Escena';
-        sBtn.addEventListener('click', (e)=>{ e.stopPropagation(); jumpToPage(sec.index); });
-        secWrap.appendChild(sBtn);
-      });
-      wrap.appendChild(secWrap);
-    }
-    tocList.appendChild(wrap);
-  });
-}
-function toc_nextIndex(ch){
-  const i = TOC.indexOf(ch);
-  return (i>=0 && i<TOC.length-1) ? TOC[i+1].index : -1;
-}
+{ lead:['El día del cabello.'],
+  xml:'Mañana. Kenzo llega al río y encuentra a Hana diferente: la humedad rizó su cabello, siempre alisado, ahora ondulado. Completamente diferente.',
+  set:'rio', light:'amanecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'hana', pose:'curly', at:'center'}],
+  lines:[
+    N('Hubo una mañana que llegué al río y te encontré diferente.'),
+    N('El cabello.'),
+    N('La humedad del amanecer lo había arruinado, según tú.'),
+    N('Según yo, era la primera vez que te veía así.'),
+    N('Y me quedé parado un momento más de lo necesario.'),
+  ]},
 
-function openTOC(){ renderTOC(); tocOverlay.classList.add('show'); }
-function closeTOC(){ tocOverlay.classList.remove('show'); }
+{ xml:'Hana lo nota parado. Lo mira.',
+  set:'rio', light:'amanecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'curly', at:'right'}],
+  lines:[
+    H('No digas nada.'),
+    K('No dije nada.'),
+    H('Estás a punto de decir algo.'),
+    K('No estoy a punto de decir nada.'),
+    K('Se te ve bien así.', '(pausa)'),
+    H('Te pedí que no dijeras nada.', '(lo mira fijo)'),
+    K('Dije algo bueno.'),
+    H('No importa. Pedí que no dijeras nada.'),
+    N('Se sentó con las hierbas y no volvió a tocar el tema.'),
+    N('Yo tampoco. Pero sí seguí mirando.'),
+    N('Y ella sabía que seguía mirando.'),
+    N('Y ninguno dijo nada sobre eso tampoco.'),
+  ]},
 
-tocBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openTOC(); });
-tocOpenTitle.addEventListener('click', (e)=>{ e.stopPropagation(); openTOC(); });
-document.getElementById('toc-close').addEventListener('click', (e)=>{ e.stopPropagation(); closeTOC(); });
-tocOverlay.addEventListener('click', (e)=>{ if(e.target===tocOverlay) closeTOC(); });
+{ xml:'A mitad de la tarde, el cabello sigue igual. Hana saca un peine e intenta controlarlo. No funciona.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'curly', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('A mitad de la tarde sacaste un peine.'),
+    N('Y empezaste a tratar de controlarlo.'),
+    N('No funcionó.'),
+    K('Hana.'),
+    H('No.', '(sin parar)'),
+    K('Solo iba a decir—'),
+    H('No.'),
+    N('Seguiste peinando. El cabello siguió igual.'),
+    N('Yo miré el río. Y sonreí solo.'),
+    N('Que también aprendí a hacer sin que se notara.'),
+  ]},
 
-/* salta directamente a la página `idx`, mostrando tarjeta de capítulo / lead
-   si corresponde, tal como ocurriría llegando ahí leyendo en orden */
-async function jumpToPage(idx){
-  closeTOC();
-  stopSpeak();
-  clearInterval(typeTimer); typing=false;
-  busy = true;
-  titleScreen.classList.add('gone');
-  endScreen.classList.remove('show');
-  dialogue.classList.remove('show');
-  muteBtn.classList.add('show');
-  tocBtn.classList.add('show');
-  if(!started){ started = true; initAudio(); }
-  cur = { p: idx, l: 0 };
-  const page = STORY[idx];
-  await wait(reduceMotion?0:120);
-  if(page.chapter) await showChapterCard(page);
-  if(page.lead)    await showBreak(page.lead);
-  await renderPage(page);
-  await wait(reduceMotion?0:120);
-  busy = false;
-  showLine();
-}
+{ lead:['El viaje a Matsumoto.', 'Primera vez que salen de Kuromi juntos.'],
+  xml:'Camino entre Kuromi y Matsumoto. Kenzo y Hana van a tomar la barca de pasajeros del río, el transporte común entre aldeas.',
+  set:'camino', light:'amanecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Un día tuve que ir a Matsumoto a buscar materiales para el taller.'),
+    N('Le pregunté a Hana si quería venir.'),
+    N('Dijo que sí antes de preguntar cómo íbamos a ir.'),
+    N('Cuando le expliqué que íbamos en la barca de pasajeros del río, me miró como si hubiera dicho algo en otro idioma.'),
+  ]},
 
-/* =========================================================================
-   GUARDADO
-   ========================================================================= */
-function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(cur)); }catch(e){} }
-function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
-function loadSave(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s && Number.isInteger(s.p) && Number.isInteger(s.l) && s.p<STORY.length && s.l<STORY[s.p].lines.length) return s; }catch(e){} return null; }
+{ xml:'En la barca, llena de gente y mercancía. Kenzo feliz, mira todo, habla con el barquero. Hana sentada muy derecha, el perro en sus piernas, procesando la cantidad de gente.',
+  set:'barca', light:'dia', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    K('Mira eso.', '(señala algo en la orilla)'),
+    H('¿Qué?', '(mirando hacia adelante, no hacia donde señala)'),
+    K('El puente de piedra viejo. Dicen que lo construyeron hace doscientos años.'),
+    H('Bien.'),
+    K('¿Estás bien?'),
+    H('Estoy bien.'),
+    K('Hay mucha gente.'),
+    H('Lo noto.'),
+    K('¿Quieres que—?'),
+    H('Estoy bien. Sigue con el puente.'),
+    N('Seguí con el puente.'),
+    N('Pero me acerqué un poco más.'),
+    N('Para que hubiera menos espacio entre ella y la gente del otro lado.'),
+    N('No lo mencioné. Ella tampoco.'),
+  ]},
 
-/* =========================================================================
-   ARRANQUE
-   ========================================================================= */
-async function beginStory(resume){
-  if(started) return; started=true;
-  initAudio();
-  if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(_){} }
-  titleScreen.classList.add('gone');
-  muteBtn.classList.add('show');
-  tocBtn.classList.add('show');
+{ xml:'Llegando a Matsumoto: ciudad más grande, más ruido, más gente. Kenzo guiando con confianza. Hana siguiéndolo.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('En Matsumoto yo era el guía.'),
+    N('Lo cual era interesante porque yo tampoco conocía bien Matsumoto.'),
+    N('Pero caminaba con confianza.'),
+    N('Y Hana confiaba en la confianza.'),
+    N('Que era una estrategia razonable hasta que dejó de serlo.'),
+  ]},
 
-  if(resume){ cur = resume; } else { cur = {p:0, l:0}; }
-  const page = STORY[cur.p];
-  // tarjeta de capítulo solo al iniciar el capítulo desde su 1ª línea
-  if(page.chapter && cur.l===0) await showChapterCard(page);
-  if(page.lead && cur.l===0) await showBreak(page.lead);
-  await renderPage(page);
-  await wait(reduceMotion?0:160);
-  showLine();
-}
+{ xml:'Se pierden. Kenzo en una calle que no reconoce. Hana lo mira. Él mira alrededor con la misma confianza de antes.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    H('¿Sabes dónde estamos?'),
+    K('Sí.'),
+    H('¿Dónde?'),
+    K('En Matsumoto.', '(pausa)'),
+    H('...'),
+    K('En la parte... este... sur. Creo.'),
+    H('Kenzo.'),
+    K('Dame un momento.'),
+    N('Me dio el momento.'),
+    N('El momento no resolvió nada.'),
+  ]},
 
-/* eventos */
-function onTap(e){
-  if(e.target.closest('#mute') || e.target.closest('#toc-btn') || e.target.closest('#toc-overlay') || e.target.closest('#title-screen') || e.target.closest('#end-screen')) return;
-  if(e.type==='touchend') e.preventDefault();
-  applyParallax(
-    e.changedTouches? e.changedTouches[0].clientX : e.clientX,
-    e.changedTouches? e.changedTouches[0].clientY : e.clientY
-  );
-  advance();
-}
-app.addEventListener('click', onTap);
-app.addEventListener('touchend', onTap, {passive:false});
+{ xml:'Hana suspira con resignación específica. Saca su lista, la revisa, mira alrededor con criterio analítico.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    H('El río está al norte. Si lo encontramos podemos orientarnos.'),
+    K('¿Cómo sabes que el río está al norte?'),
+    H('Porque llegamos por el río y veníamos del sur.'),
+    K('Ah.'),
+    H('¿No pensaste en eso?'),
+    K('Estaba viendo el puente.'),
+    N('No dijo nada. Empezó a caminar hacia el norte.'),
+    N('Yo la seguí. El perro también.'),
+    N('Sin preguntarle si sabía a dónde iba.'),
+    N('Porque claramente sí sabía.'),
+  ]},
 
-muteBtn.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  audioMuted=!audioMuted; speechMuted=audioMuted;
-  if(audioCtx){ audioMuted? audioCtx.suspend() : audioCtx.resume(); }
-  if(audioMuted) stopSpeak();
-  muteBtn.querySelector('svg').innerHTML = audioMuted
-    ? '<path d="M11 5 6 9H3v6h3l5 4z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>'
-    : '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a8.5 8.5 0 0 1 0 12"/>';
-});
+{ xml:'Encuentran el río. Se orientan. Kenzo feliz aunque estuvieran perdidos. Hana suelta una risa pequeña, la primera que él le ve.',
+  set:'rio', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('¿Ves? Lo encontramos.'),
+    H('Tú no lo encontraste. Yo lo encontré.'),
+    K('Íbamos juntos.'),
+    H('Tú ibas detrás de mí.'),
+    K('Como apoyo moral.'),
+    N('Se detuvo. Me miró.'),
+    N('Y soltó algo que nunca había visto.'),
+    N('Una risa. Pequeña. Casi nada.'),
+    N('Pero era una risa real. La primera que le vi.'),
+    N('Y me pareció la cosa más importante que había visto en Matsumoto.'),
+    N('Más que el puente de doscientos años.'),
+  ]},
 
-document.getElementById('begin').addEventListener('click', (e)=>{ e.stopPropagation(); clearSave(); beginStory(null); });
-document.getElementById('resume').addEventListener('click', (e)=>{ e.stopPropagation(); beginStory(loadSave()); });
-document.getElementById('end-again').addEventListener('click', (e)=>{ e.stopPropagation(); location.reload(); });
+{ lead:['El mercado de Matsumoto.'],
+  xml:'Mercado grande de Matsumoto, mucho más grande que el de Kuromi. Kenzo fascinado. Hana caminando más cerca de él que de costumbre.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    N('El mercado de Matsumoto era el doble que el de Kuromi.'),
+    N('Para mí eso era fascinante.'),
+    N('Para Hana era demasiada gente en demasiado poco espacio.'),
+    N('Caminaba más cerca de mí que de costumbre.'),
+    N('No lo dijo. Solo pasó.'),
+  ]},
 
-/* mostrar "continuar" si hay progreso guardado */
-(function initTitle(){
-  const saved = loadSave();
-  const showSub  = ()=> document.getElementById('t-sub').classList.add('show');
-  const showBtn  = ()=>{ document.getElementById('begin').classList.add('show'); if(saved && (saved.p>0||saved.l>0)) document.getElementById('resume').classList.add('show'); };
-  if(reduceMotion){ showSub(); showBtn(); }
-  else { setTimeout(showSub, 3000); setTimeout(showBtn, 5000); }
-})();
-</script>
-</body>
-</html>
+{ xml:'Puesto de especias enorme. Hana se detiene; sus ojos cambian — esto es su territorio. Empieza a revisar con criterio total.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'hana', pose:'hold', at:'center'}],
+  lines:[
+    N('Y entonces llegamos al puesto de especias.'),
+    N('Y Hana dejó de estar incómoda.'),
+    N('Y se convirtió en otra persona.'),
+    N('O en la versión más completa de ella misma.'),
+    N('Que era lo mismo.'),
+  ]},
+
+{ xml:'Hana huele, evalúa, compara. El vendedor le responde con respeto. Kenzo observa.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'hold', at:'right'}],
+  lines:[
+    K('Aquí sí eres feliz.', '(en voz baja, solo para él)'),
+    H('No estaba siendo infeliz antes.', '(sin voltear)'),
+    K('Pero aquí sí estás cómoda.'),
+    H('Las especias están bien conservadas.', '(sigue con las especias)'),
+    N('Lo traduje:'),
+    N('Sí. Aquí sí estoy cómoda.'),
+    N('Aprendí a hacer eso.'),
+    N('Traducir lo que Hana decía a lo que Hana quería decir.'),
+    N('Era casi un idioma.'),
+  ]},
+
+{ lead:['De regreso a Kuromi.', 'En la barca.', 'Tarde.'],
+  xml:'La barca de regreso, menos gente. El sol bajando. Hana sentada, el perro dormido en sus piernas. Kenzo a su lado.',
+  set:'barca', light:'atardecer', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    N('En la barca de vuelta había menos gente.'),
+    N('Hana estaba más relajada.'),
+    N('El perro dormía encima de ella.'),
+    N('Y el río llevaba el color del atardecer.'),
+    H('El río desde aquí se ve diferente que desde la orilla.'),
+    K('Sí.'),
+    H('Me gusta más desde aquí.', '(pausa)'),
+    N('No dijiste nada más. Pero eso era mucho.'),
+    N('Porque Hana no decía que algo le gustaba más si no era verdad.'),
+    N('No tenía esa clase de cortesía.'),
+    N('Si lo decía, era porque era verdad.'),
+    N('Y lo había dicho sobre algo que yo amaba.'),
+    N('Así que lo guardé. Como guardaba todo lo suyo.'),
+  ]},
+
+{ lead:['La discusión del puente.', 'Una tarde cualquiera.'],
+  xml:'Las escaleras del templo. Hana terminó una figura — una garza. La examina, está bien, la deja entre los dos.',
+  set:'templo', light:'tarde', season:'verano', opts:{night:false},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'right', dx:-30},
+  lines:[
+    N('Hubo una tarde que discutimos.'),
+    N('Por algo sin importancia.'),
+    N('Como pasa con las cosas que realmente importan.'),
+    K('¿Por qué las organizas por tipo y no por cuándo las necesitas?'),
+    H('Porque organizarlas por tipo tiene más sentido.'),
+    K('Para ti.'),
+    H('Para cualquiera que piense en ello.'),
+    K('Yo las organizaría por uso.'),
+    H('Y perderías tiempo buscando cuando se traslapan.'),
+    K('No necesariamente.'),
+    H('Sí necesariamente.'),
+  ]},
+
+{ xml:'Silencio. Los dos mirando en distintas direcciones. El perro los mira a uno y al otro. Kenzo suspira y cede.',
+  set:'templo', light:'atardecer', season:'verano', opts:{night:false},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Nos quedamos callados un rato.'),
+    N('Yo pensando si tenía razón.'),
+    N('Ella probablemente confirmando que tenía razón.'),
+    K('Está bien. Por tipo.'),
+    H('No tienes que estar de acuerdo solo para terminar la discusión.', '(pausa)'),
+    K('No lo hago solo para terminarla.'),
+    H('¿No?'),
+    K('Bueno. Sí un poco.'),
+    N('Algo en tu cara cambió. Muy poco. Pero fue algo.'),
+    N('Como si hubieras esperado que lo admitiera.'),
+    N('Y que te gustara que lo hiciera.'),
+    H('Por tipo es mejor.'),
+    K('Probablemente.'),
+    H('No probablemente.'),
+    K('Definitivamente.', '(pausa)'),
+    N('No era una victoria. Pero lo parecía un poco.'),
+    N('Y ella lo dejó parecer. Que para Hana era mucho.'),
+  ]},
+
+{ lead:['El final del verano.', 'Las cosas que se forman sin decidirlas.'],
+  xml:'Secuencia de momentos: el río, el templo, el camino. Los mismos lugares con el peso de meses acumulados. Las costumbres ya están ahí sin que nadie las declarara.',
+  set:'rio', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Al final del verano ya teníamos costumbres.'),
+    N('No las habíamos decidido. Solo aparecieron.'),
+    N('El río por las mañanas.'),
+    N('Las escaleras del templo a veces.'),
+    N('La comida que traía ella.'),
+    N('Las cosas que construía yo.'),
+    N('El perro que era de los dos aunque ninguno lo hubiera decidido así.'),
+    N('Y los silencios que ya no necesitaban llenarse.'),
+    N('Eso. Eso era lo que más valía.'),
+  ]},
+
+{ xml:'Noche. Kenzo en el techo del taller. La cajita abierta: la grulla, varias notas, la figura de la garza nueva.',
+  set:'techo', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'box',
+  lines:[
+    N('Esa noche abrí la cajita.'),
+    N('Conté lo que había adentro.'),
+    N('Notas. Figuras. Una lista de hierbas que me había dado para que aprendiera.'),
+    N('La garza de esa tarde.'),
+    N('Todo cuidadosamente doblado.'),
+    N('Todo con los mismos dobleces de siempre.'),
+    N('Porque si lo doblas diferente cada vez, al final no sabes dónde está lo importante.'),
+    N('Cerré la caja.'),
+    N('Y pensé que si había una manera de que esto siguiera siendo así para siempre, yo la quería encontrar.'),
+    N('Sin saber todavía que el tiempo tenía sus propios planes.'),
+    N('Y que los planes del tiempo no preguntan.'),
+  ]},
+
+/* ============================ CAPÍTULO 3 ============================
+   "Lo que se dijo y lo que no alcanzó" */
+{ chapter:'Capítulo 3', chapterName:'Lo que se dijo y lo que no alcanzó', chapterWhen:'Verano. Él dice lo que siente. Y la vida sigue de todas formas.',
+  lead:['Verano.', 'Kenzo lleva meses guardando algo.', 'Hoy lo va a decir.'],
+  xml:'El río. Tarde de verano calurosa. Los dos en su lugar de siempre, el perro dormido. El silencio de costumbre, pero Kenzo está diferente: más quieto, menos palabras.',
+  set:'rio', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Llevaba semanas con algo que no sabía cómo sacar.'),
+    N('No era complicado.'),
+    N('Era simple.'),
+    N('Pero simple no significa fácil.'),
+    N('Y yo que nunca me quedaba callado, de repente no encontraba por dónde empezar.'),
+  ]},
+
+{ xml:'Hana trabaja con sus hierbas. Lo mira de reojo una vez — nota que está callado más de lo normal. Regresa a sus hierbas sin decir nada.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Me miraste.'),
+    N('Notaste que algo estaba diferente.'),
+    N('No preguntaste.'),
+    N('Esperaste.'),
+    N('Que también era tu manera.'),
+  ]},
+
+{ xml:'Kenzo mira el río. Respira. Se voltea hacia ella.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Hana.'),
+    H('¿Qué?', '(sin levantar la vista)'),
+    K('Tengo que decirte algo.'),
+    H('Dilo.', '(ahora sí lo mira)'),
+    N('Así de directo.'),
+    N('Dilo.'),
+    N('Sin preámbulo.'),
+    N('Sin prepararte.'),
+    N('Solo: dilo.'),
+    N('Que era exactamente lo que necesitaba escuchar.'),
+  ]},
+
+{ xml:'Kenzo la mira directo. Ella sostiene la mirada. El sol bajando. El perro abre un ojo y lo cierra.',
+  set:'rio', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Me gustas.'),
+    K('Desde hace tiempo.'),
+    K('No lo había dicho porque no sabía cómo, o porque me daba miedo, o las dos cosas.'),
+    K('Pero ya no tiene sentido seguir sin decirlo.'),
+    B('— el río · el perro que abre un ojo y lo cierra —'),
+    H('Ah.'),
+    N('Ah.'),
+    N('Solo eso.'),
+    N('Ah.'),
+  ]},
+
+{ xml:'Silencio. Hana mira sus manos. Luego el río. Kenzo la mira a ella. El sol bajando lento.',
+  set:'rio', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('No dijiste nada más por un rato.'),
+    N('Aprendí a esperar tus tiempos.'),
+    N('Así que esperé.'),
+    N('Esta vez fueron más de veinte pasos.'),
+    N('Mucho más.'),
+  ]},
+
+{ xml:'Hana lo mira. Él sostiene la mirada. Ella abre la boca, la cierra, mira el agua otra vez.',
+  set:'rio', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    H('No sé qué decirte.'),
+    K('No tienes que decir nada ahorita.'),
+    H('¿Estás seguro de lo que dices?', '(pausa larga)'),
+    K('Sí.'),
+    H('Okay.', '(otro momento)'),
+    N('Okay.'),
+    N('No era un sí.'),
+    N('No era un no.'),
+    N('Era ella siendo honesta sobre no saber todavía.'),
+    N('Y yo lo respeté.'),
+    N('Aunque no supiera bien qué hacer con eso.'),
+  ]},
+
+{ xml:'Los dos siguen en el río un rato más. El tema no vuelve. El silencio es diferente al de antes: no incómodo, pero cargado de algo nuevo.',
+  set:'rio', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Nos quedamos un rato más.'),
+    N('No volvimos a hablar del tema.'),
+    N('Pero el río ese día se sentía diferente.'),
+    N('O yo me lo imaginé.'),
+    N('Probablemente me lo imaginé.'),
+  ]},
+
+{ lead:['Las semanas siguientes.', 'Las cosas siguieron.', 'Y también cambiaron.'],
+  xml:'El río, los días después. Todo casi igual, pero hay algo nuevo flotando entre los dos. No incómodo. Solo presente.',
+  set:'rio', light:'dia', season:'verano', opts:{tree:'sakura', ducks:true},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Las cosas siguieron.'),
+    N('El río. Las hierbas. La cajita con notas.'),
+    N('Yo hablando. Tú escuchando.'),
+    N('Pero ahora lo que había entre nosotros tenía nombre.'),
+    N('Y los dos sabíamos que el otro lo sabía.'),
+    N('Eso cambiaba algunas cosas.'),
+    N('No todas.'),
+    N('Pero sí algunas.'),
+  ]},
+
+{ xml:'Un momento específico — Kenzo dice algo, Hana lo mira diferente al usual. No mucho. Pero diferente. Él lo nota. No dice nada. Sigue hablando.',
+  set:'rio', light:'dia', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('A veces te me quedabas viendo diferente.'),
+    N('No mucho.'),
+    N('Pero sí diferente al usual.'),
+    N('Y yo fingía que no lo había notado.'),
+    N('Y tú fingías que no lo habías hecho.'),
+    N('Y así seguíamos.'),
+    N('Que era un sistema raro.'),
+    N('Pero era nuestro sistema.'),
+  ]},
+
+{ xml:'Un día Hana llega al río con algo preparado especialmente — no la comida de siempre, algo más elaborado. Lo pone entre los dos sin decir nada.',
+  set:'rio', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Un día llegaste con algo diferente.'),
+    N('Más elaborado que lo de siempre.'),
+    N('Sin decir por qué.'),
+    N('Sin decir nada.'),
+    N('Solo lo pusiste entre los dos.'),
+  ]},
+
+{ xml:'Kenzo lo prueba. Es muy bueno. Lo mira. La mira a ella. Ella está viendo el río.',
+  set:'rio', light:'tarde', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    K('Hana.'),
+    H('¿Qué?'),
+    K('Esto está muy bien hecho.'),
+    H('Lo sé.', '(sin voltear)'),
+    K('Específicamente: el balance entre los sabores es exacto. No sobra nada.'),
+    H('Bien.', '(un momento)'),
+    N('Bien.'),
+    N('Que de parte de ella era bastante.'),
+    N('Lo guardé.'),
+    N('Como guardaba todo lo suyo.'),
+  ]},
+
+{ lead:['Final del verano.', 'Algo empieza a cambiar.', 'Sin que nadie lo diga.'],
+  xml:'El grupo de arquería del templo practicando en el patio exterior. Kenzo pasa por ahí por casualidad. Ve a Hana entre el grupo — concentrada, en su elemento, más suelta, más parte de algo.',
+  set:'arqueria', light:'tarde', season:'verano', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'hana', pose:'bow', at:'center'}],
+  lines:[
+    N('Una tarde pasé por el templo y la vi practicando con su grupo.'),
+    N('Arquería.'),
+    N('Llevaba años en ese grupo.'),
+    N('Desde antes de llegar a Kuromi.'),
+    N('Y se le notaba.'),
+    N('Se movía diferente ahí.'),
+    N('Más suelta.'),
+    N('Más parte de algo que tenía historia antes que yo.'),
+  ]},
+
+{ xml:'Kenzo la observa desde afuera sin entrar. Después de la práctica, Hana habla con otros del grupo con naturalidad y confianza.',
+  set:'arqueria', light:'atardecer', season:'verano', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'stand', at:'left', dim:true, w:'42%'}, {who:'hana', pose:'stand', at:'right'}],
+  lines:[
+    N('Tenías un mundo antes de mí.'),
+    N('Lo sabía.'),
+    N('Pero ese día lo vi.'),
+    N('Y entendí que ese mundo tenía sus propias personas, sus propios lazos.'),
+    N('Formados con años.'),
+    N('Yo tenía un verano.'),
+    N('No más que eso.'),
+  ]},
+
+{ lead:['Otoño llegando.', 'La noticia llega al taller.'],
+  xml:'Interior del taller. El padre de Kenzo hablando con él — algo serio, importante. Kenzo escuchando; su cara cambia mientras escucha.',
+  set:'taller', light:'dia', season:'otono',
+  cast:[{who:'padre', pose:'work', at:'right'}, {who:'kenzo', pose:'stand', at:'left'}],
+  lines:[
+    N('En otoño mi padre me dijo algo que no esperaba.'),
+    N('Un maestro artesano de Matsumoto estaba buscando aprendices.'),
+    N('Alguien había recomendado mi trabajo.'),
+    N('Era una oportunidad real.'),
+    N('Dos años en la ciudad aprendiendo el oficio en serio.'),
+    N('Mi padre no lo dijo como pregunta.'),
+    N('Lo dijo como algo que iba a pasar.'),
+  ]},
+
+{ xml:'Kenzo solo esa noche en el techo del taller, mirando las estrellas. La noticia todavía asentándose.',
+  set:'techo', light:'noche', season:'otono',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Esa noche no dormí bien.'),
+    N('Pensé en Matsumoto.'),
+    N('En dos años.'),
+    N('En lo que eso significaba.'),
+    N('Y pensé en el río.'),
+    N('Y en Hana.'),
+    N('Y en que todavía no había pasado nada concreto entre los dos.'),
+    N('Solo un okay que no era sí ni no.'),
+    N('Y yo que me iba en unos meses.'),
+  ]},
+
+{ xml:'El río. Kenzo llega. Hana ya está. Todo como siempre. Él se sienta. El perro lo saluda.',
+  set:'rio', light:'tarde', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Fui al río al día siguiente.'),
+    N('Con la noticia encima.'),
+    N('No supe cómo decírtela.'),
+    N('Así que primero no dije nada.'),
+    N('Solo estuve ahí un rato.'),
+  ]},
+
+{ xml:'Kenzo finalmente lo dice. Hana deja de trabajar con las hierbas. Lo mira.',
+  set:'rio', light:'tarde', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    K('Me voy a Matsumoto en dos meses.'),
+    H('¿A Matsumoto?'),
+    K('Dos años de aprendiz con un maestro artesano.'),
+    B('— silencio —'),
+    H('¿Cuándo supiste?'),
+    K('Ayer.'),
+    B('— silencio más largo —'),
+    H('Bien.'),
+    N('Esta vez el bien sí pesó diferente.'),
+    N('No era el bien de cuando la comida estaba bien hecha.'),
+    N('Era otro bien.'),
+    N('El que usas cuando no sabes qué más decir.'),
+  ]},
+
+{ xml:'Los dos en silencio. El río corriendo. El verano terminando. Las primeras hojas cambiando de color al fondo.',
+  set:'rio', light:'atardecer', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('No hablamos mucho más ese día.'),
+    N('Nos quedamos hasta que oscureció.'),
+    N('Sin decirlo.'),
+    N('Solo nos quedamos.'),
+  ]},
+
+{ lead:['Los dos meses siguientes.', 'Todo igual.', 'Y con fecha.'],
+  xml:'El río, el templo, el camino. Los mismos lugares. Pero ahora hay un reloj encima de todo. Kenzo lo siente en cada tarde.',
+  set:'camino', light:'tarde', season:'otono', opts:{tree:'otono'},
+  cast:[{who:'kenzo', pose:'stand', at:'left'}, {who:'hana', pose:'stand', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('Esos dos meses fueron raros.'),
+    N('Todo igual que antes.'),
+    N('El río. Las hierbas. La comida. Las notas.'),
+    N('Pero con fecha.'),
+    N('Y cuando las cosas tienen fecha, pesan diferente.'),
+  ]},
+
+{ xml:'Una tarde. Kenzo llega con algo que hizo en el taller, más elaborado que la cajita: un porta-notas de madera con compartimento escondido para papeles doblados. Lo trabajó semanas.',
+  set:'rio', light:'tarde', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'portanotas',
+  lines:[
+    N('Hice algo en el taller esas semanas.'),
+    N('Lo pensé mucho.'),
+    N('Un porta-notas de madera.'),
+    N('Con un compartimento adentro para guardar papeles doblados.'),
+    N('Encajaba perfectamente.'),
+    N('Sin holgura.'),
+    N('Porque sabía que eso era lo que más te importaba.'),
+    N('Que las cosas cerraran bien.'),
+  ]},
+
+{ xml:'Kenzo se lo da a Hana en el río. Ella lo recibe y lo examina con su criterio de siempre, pero más lento, más cuidadoso.',
+  set:'rio', light:'tarde', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'portanotas',
+  lines:[
+    N('Lo examinaste como examinabas todo.'),
+    N('Pero más despacio que de costumbre.'),
+    N('Abriste el compartimento.'),
+    N('Pusiste un papel doblado adentro.'),
+    N('Cerró perfectamente.'),
+  ]},
+
+{ xml:'Hana lo mira a él, no al porta-notas. A él. Un momento largo.',
+  set:'rio', light:'atardecer', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    H('¿Por qué esto?'),
+    K('Para que tengas dónde guardar las notas.'),
+    H('Ya tengo la cajita.', '(pausa)'),
+    K('Esa se la quedé yo.'),
+    N('No dijiste nada más.'),
+    N('Guardaste el porta-notas en tu bolsa.'),
+    N('Y yo supe que lo ibas a usar.'),
+    N('Porque no guardabas cosas que no ibas a usar.'),
+  ]},
+
+{ lead:['La última semana.'],
+  xml:'El río. Tarde. Los dos como siempre. Pero ya es la última semana. Los dos lo saben. Ninguno lo dice.',
+  set:'rio', light:'tarde', season:'otono', opts:{sun:true, tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], dog:{pos:'center', dx:0},
+  lines:[
+    N('La última semana antes de irme fue la más larga.'),
+    N('Íbamos al río como siempre.'),
+    N('Hablábamos como siempre.'),
+    N('Pero había algo debajo de todo que los dos sentíamos.'),
+    N('Y que ninguno nombraba.'),
+  ]},
+
+{ xml:'Penúltimo día. El río. Hana le da un papel doblado, sacado del porta-notas que él le hizo. Se lo da directamente esta vez.',
+  set:'rio', light:'tarde', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'note',
+  lines:[
+    N('El penúltimo día me diste un papel.'),
+    N('Directamente.'),
+    N('No lo dejaste en algún lugar para que lo encontrara.'),
+    N('Me lo diste en la mano.'),
+    N('Sin mirarme mientras lo hacías.'),
+    N('Como siempre.'),
+  ]},
+
+{ xml:'Kenzo toma el papel. La mira.',
+  set:'rio', light:'atardecer', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}],
+  lines:[
+    K('¿Lo leo ahorita?'),
+    H('Cuando quieras.', '(un momento)'),
+    N('Esta vez no dijo: léelo después.'),
+    N('Dijo: cuando quieras.'),
+    N('Eso era diferente.'),
+  ]},
+
+{ xml:'Kenzo abre el papel y lo lee. No vemos el contenido, solo su cara: primero atento, luego algo más suave.',
+  set:'rio', light:'atardecer', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('Lo leí ahí mismo.'),
+    N('Con ella presente.'),
+    N('No decía mucho.'),
+    N('Nunca decías mucho.'),
+    N('Pero decía que el río iba a ser más aburrido sin alguien que no sabe distinguir las hierbas.'),
+    N('Y que esperaba que Matsumoto tuviera mejores especias que Kuromi.'),
+    N('Y al final, muy pequeño:'),
+    N('Cuídate.'),
+    N('Dos palabras.'),
+    N('Pero venían de Hana.'),
+    N('Y de Hana dos palabras valían bastante.'),
+  ]},
+
+{ xml:'Kenzo dobla el papel y lo guarda en la cajita — la que ella le había devuelto con la grulla.',
+  set:'rio', light:'atardecer', season:'otono', opts:{tree:'otono', hill:'#8a7a4a', frontBank:'#a8985a'},
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'hana', pose:'sit', at:'right'}], prop:'cajita',
+  lines:[
+    K('Voy a volver.'),
+    H('Lo sé.', '(mira el río)'),
+    K('Y cuando vuelva, quiero que—'),
+    H('No.', '(lo detiene, suave)'),
+    K('Ni siquiera sabes qué iba a decir.'),
+    H('Sí sé. Y no me prometas nada que todavía no sepas si vas a poder cumplir.', '(pausa)'),
+    N('No lo dijo para alejarme.'),
+    N('Lo dijo porque Hana no hacía promesas que no pudiera garantizar.'),
+    N('Ni siquiera me dejaba hacerlas a mí.'),
+    K('¿Entonces?'),
+    H('Cuando vuelvas, vemos.', '(silencio largo)'),
+    N('Cuando vuelvas, vemos.'),
+    N('No era una promesa.'),
+    N('No era un cierre.'),
+    N('Era Hana siendo honesta sobre no saber el futuro.'),
+    N('Que siempre era mejor que una promesa vacía.'),
+    N('Lo entendí. Lo respeté.'),
+    N('Y también me pesó.'),
+  ]},
+
+{ xml:'Último día. Kenzo en el camino que sale de Kuromi, mochila al hombro. El taller atrás, la aldea atrás. El río invisible desde ahí pero presente.',
+  set:'camino', light:'amanecer', season:'otono', opts:{tree:'otono'},
+  cast:[{who:'kenzo', pose:'bag', at:'center'}],
+  lines:[
+    N('Me fui un martes de otoño.'),
+    N('No nos despedimos en el río.'),
+    N('No quise.'),
+    N('El río era nuestro lugar.'),
+    N('No quería que la última imagen fuera una despedida ahí.'),
+    N('Así que solo me fui.'),
+    N('Con la cajita en la mochila.'),
+  ]},
+
+{ xml:'A mitad del camino a Matsumoto, Kenzo se detiene y abre la cajita para revisar que todo estuviera. Sobre el papel nuevo hay una figura de papel que él no puso. Hana la dejó, sin decir nada.',
+  set:'camino', light:'dia', season:'otono', opts:{tree:'otono'},
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'crane',
+  lines:[
+    N('A mitad del camino abrí la cajita.'),
+    N('Solo para revisar que todo estuviera.'),
+    N('El papel nuevo seguía adentro.'),
+    N('Pero había algo más.'),
+    N('Una figura.'),
+    N('Una que yo no había puesto.'),
+    N('Doblada con los mismos dobleces de siempre.'),
+    N('No era una nota.'),
+    N('No hacía falta.'),
+    N('La dejaste sin decir nada.'),
+    N('Como dejabas las cosas que más pesaban.'),
+    N('La guardé con cuidado en la cajita.'),
+    N('Y seguí caminando a Matsumoto.'),
+    N('Un poco menos solo de lo que pensé que iba a estar.'),
+  ]},
+/* ============================ CAPÍTULO 4 ============================
+   "Lo que el tiempo hace cuando uno no mira"
+   REEMPLAZA desde la línea 1370 hasta la línea 1833 (antes del cierre ]; )
+   ===================================================================== */
+
+{ chapter:'Capítulo 4', chapterName:'Lo que el tiempo hace cuando uno no mira', chapterWhen:'Matsumoto. Dos años. El regreso.',
+  lead:['Matsumoto.', 'Año 1803.', 'Primer mes.'],
+  xml:'Matsumoto. Ciudad más grande que Kuromi. Kenzo llegando con su mochila, mirando alrededor con genuina curiosidad. No con nostalgia. Con interés real.',
+  set:'matsumoto', light:'amanecer', season:'primavera',
+  cast:[{who:'kenzo', pose:'bag', at:'center'}],
+  lines:[
+    N('Matsumoto era diferente a todo lo que conocía.'),
+    N('Más ruido. Más gente. Más todo.'),
+    N('La primera semana caminé todo lo que pude después del taller.'),
+    N('No porque tuviera a dónde ir.'),
+    N('Sino porque había mucho que ver.'),
+    N('Y yo siempre fui bueno en eso.'),
+    N('En estar presente donde estaba.'),
+  ]},
+
+{ xml:'Las calles del barrio de artesanos de Matsumoto. Más angostas que en Kuromi, talleres con puertas abiertas de par en par. Se escucha martillar metal, lijar madera, el sonido de un telar.',
+  set:'matsumoto', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Las calles eran más angostas de lo que esperaba, apretadas entre talleres.'),
+    N('Se escuchaba martillar metal en una calle, lijar madera en otra.'),
+    N('Y en algún lugar alguien tejía con un telar que sonaba como lluvia constante.'),
+    N('Pregunté tres veces antes de encontrar el taller correcto.'),
+    N('Las tres veces la gente fue amable pero apurada.'),
+    N('Eso también era nuevo.'),
+    N('En Kuromi nadie estaba apurado.'),
+  ]},
+
+{ xml:'El taller de Hiroshi. Interior preciso. Maderas organizadas en las paredes. Hiroshi — hombre mayor, de pocas palabras — revisando el trabajo de Kenzo el primer día sin decir nada.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'stand', at:'left'}],
+  lines:[
+    N('El taller de Hiroshi estaba al fondo de un callejón.'),
+    N('Adentro olía a barniz y a cedro.'),
+    N('Las maderas en las paredes estaban organizadas por dureza, no por tipo.'),
+    N('Las más suaves arriba. Las más duras abajo, cerca de las herramientas que las necesitaban.'),
+    N('Tardé tres días en entender eso.'),
+    N('Hiroshi no me lo explicó.'),
+    N('Solo esperó a que lo viera.'),
+  ]},
+
+{ xml:'Hiroshi y Kenzo. El maestro revisa las herramientas de Kenzo el primer día.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'stand', at:'left'}],
+  lines:[
+    {s:'Hiroshi', t:'¿Trajiste tus propias herramientas?'},
+    K('Sí, señor.'),
+    {s:'Hiroshi', t:'Muéstramelas.'},
+    N('Saqué mi cuchillo de tallar, mi formón viejo, y la sierra pequeña que había sido de mi padre.'),
+    N('Las revisó una por una. Pasó el dedo por el filo del formón.'),
+    {s:'Hiroshi', t:'Esto necesita afilarse.'},
+    K('Lo afilé antes de venir.'),
+    {s:'Hiroshi', t:'Entonces lo afilaste mal.'},
+    N('No supe qué responder a eso.'),
+    N('Me dio una piedra de afilar y me señaló un rincón.'),
+    {s:'Hiroshi', t:'Hazlo bien. Tienes hasta que se ponga el sol.'},
+    N('Eran las nueve de la mañana.'),
+    N('Pasé el día entero con esa piedra.'),
+    N('Al final del día, Hiroshi pasó el dedo por el filo otra vez.'),
+    {s:'Hiroshi', t:'Mejor.'},
+    N('Eso fue todo lo que dijo.'),
+    N('Mi primer día completo en Matsumoto lo pasé afilando una herramienta que yo creía que ya estaba afilada.'),
+  ]},
+
+{ xml:'Kenzo de noche en su cuarto rentado. Pequeño. Espacio para dormir y poco más. La ciudad suena diferente a Kuromi.',
+  set:'cuarto', light:'noche', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Vivía en un cuarto que rentaba arriba de una tienda de té, a diez minutos del taller.'),
+    N('Era pequeño. Tenía espacio para dormir y poco más.'),
+    N('La primera noche me costó dormir, no por incomodidad sino porque la ciudad sonaba diferente.'),
+    N('En Kuromi de noche se escuchaban grillos y, si acaso, algún perro lejano.'),
+    N('Aquí se escuchaban pasos en la calle hasta tarde, conversaciones, alguien cantando en una taberna cercana.'),
+    N('Me quedé despierto escuchando todo eso.'),
+    N('No de manera triste.'),
+    N('Solo lejos.'),
+    N('Que era una sensación que no había tenido nunca.'),
+  ]},
+
+{ lead:['La primera nota.'],
+  xml:'Kenzo escribiendo a la luz de una vela pequeña. Sus dobleces — torcidos como siempre — y la nota lista para mandar.',
+  set:'cuarto', light:'noche', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('La primera semana le escribí una nota a Hana.'),
+    N('Le conté del taller, de Hiroshi, de la piedra de afilar.'),
+    N('Le conté que el puesto de especias del mercado central era el doble de grande que el del señor Mori.'),
+    N('Intenté doblar el papel como ella lo hacía.'),
+    N('No quedó igual. Nunca quedaba igual.'),
+    N('La mandé de todas formas.'),
+  ]},
+
+{ xml:'La respuesta llega nueve días después. Los dobleces perfectos. Kenzo la reconoce antes de abrirla.',
+  set:'cuarto', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('Respondió a los nueve días.'),
+    N('Reconocí los dobleces antes de abrirla.'),
+    N('Decía que el perro había tirado un tintero entero sobre unos documentos de su padre.'),
+    N('Que las especias del señor Mori seguían siendo un problema, como siempre.'),
+    N('Y al final: espero que el trabajo vaya bien.'),
+    N('La leí dos veces antes de guardarla.'),
+    N('Era corta, pero me hizo sentir un poco menos lejos.'),
+  ]},
+
+{ lead:['Dos meses.'],
+  xml:'Hiroshi le pone a Kenzo una pieza de cedro fino enfrente — un encargo real, no de práctica.',
+  set:'taller', light:'dia', season:'verano',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Al segundo mes, Hiroshi empezó a dejarme tocar piezas que sí importaban.'),
+    N('Antes solo practicaba en madera de descarte.'),
+    N('Un día me puso enfrente una pieza de cedro fino y me dijo que hiciera un corte de encastre.'),
+    {s:'Hiroshi', t:'¿Y si me equivoco?'},
+    N('Esperé su respuesta.'),
+    {s:'Hiroshi', t:'Te vas a equivocar.'},
+    K('¿Y entonces?'),
+    {s:'Hiroshi', t:'Entonces aprendes en madera que sí importa. Que es la única forma de aprender de verdad.'},
+    N('Me equivoqué.'),
+    N('El corte quedó torcido, y la pieza de cedro se desperdició.'),
+    N('Hiroshi la miró, la dejó a un lado, y me dio otra.'),
+    {s:'Hiroshi', t:'Otra vez.'},
+    N('No dijo nada sobre el desperdicio.'),
+    N('Entendí que para él, el desperdicio era parte del costo de enseñar bien.'),
+    N('Eso me hizo respetarlo más.'),
+  ]},
+
+{ lead:['Tres meses. Cuatro meses.'],
+  xml:'Kenzo descubriendo Matsumoto fuera del taller. El mercado de maderas, el camino al río, una colina al este de la ciudad.',
+  set:'matsumoto', light:'tarde', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Empecé a conocer la ciudad fuera del taller.'),
+    N('Descubrí que el mercado central tenía una sección al fondo donde vendían maderas que venían de lugares que ni siquiera sabía que existían.'),
+    N('Maderas oscuras, casi negras, que según el vendedor llegaban de barcos desde el sur.'),
+    N('Nunca compré ninguna. No tenía dinero para eso.'),
+    N('Pero iba seguido solo a verlas e imaginar qué se podría hacer con ellas.'),
+    N('Y encontré una colina al este, detrás del templo más grande de Matsumoto.'),
+    N('Desde arriba se veía toda la ciudad, y más allá, las montañas que separaban Matsumoto de todo lo demás.'),
+    N('Me quedé ahí hasta que el sol se metió completamente.'),
+    N('Se volvió mi lugar.'),
+    N('Como el río había sido mi lugar en Kuromi.'),
+    N('Solo que este no tenía a nadie más en él.'),
+    N('Y eso era diferente.'),
+    N('No necesariamente peor.'),
+    N('Diferente.'),
+  ]},
+
+{ xml:'Otros aprendices del barrio de artesanos. Daiki, que aprende cerámica; Yui, que teje telas. Se cruzan en el mercado y empiezan a coincidir.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('En Matsumoto había otros aprendices.'),
+    N('Daiki aprendía cerámica con un maestro tres puertas más allá del taller de Hiroshi.'),
+    N('Y una chica llamada Yui tejía telas con un patrón que yo no entendía pero que requería más paciencia de la que yo tendría jamás.'),
+    N('Empezamos a comer juntos algunos días, sentados en la entrada del taller de Daiki cuando el clima lo permitía.'),
+  ]},
+
+{ xml:'Una comida con Daiki y Yui. Conversación sobre de dónde viene cada quien.',
+  set:'matsumoto', light:'dia', season:'verano',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    {s:'Daiki', t:'¿De dónde eres tú otra vez?'},
+    K('Kuromi. Es una aldea pequeña, a un día de camino.'),
+    {s:'Yui', t:'¿Y por qué viniste hasta acá?'},
+    K('Mi padre conocía a Hiroshi. Dijo que era una oportunidad que no debía dejar pasar.'),
+    {s:'Daiki', t:'¿Y dejaste algo allá?'},
+    N('La pregunta me agarró de sorpresa.'),
+    K('¿Por qué preguntas eso?'),
+    {s:'Daiki', t:'Porque pones cara rara cuando mencionas la aldea.'},
+    K('Hay alguien. No sé bien qué es.'),
+    {s:'Yui', t:'Eso siempre es lo más difícil de definir.'},
+    N('No seguimos hablando de eso.'),
+    N('Pero esa tarde, caminando de vuelta a mi cuarto, pensé en Hana más de lo que había pensado en varios días.'),
+    N('Que era exactamente lo contrario de lo que tenía planeado hacer.'),
+  ]},
+
+{ lead:['Cinco meses.'],
+  xml:'Kenzo en su colina al este de Matsumoto. La ciudad entera abajo. Las montañas al fondo.',
+  set:'colina', light:'atardecer', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Subí a la colina una tarde sin razón particular.'),
+    N('Desde arriba se veía toda la ciudad, y más allá, las montañas.'),
+    N('Me quedé ahí hasta que el sol se metió completamente.'),
+    N('Y volví varias veces después.'),
+    N('Esa colina se fue convirtiendo en el lugar donde iba cuando quería pensar sin que nadie me interrumpiera.'),
+    N('El equivalente de Matsumoto a sentarse en el río.'),
+    N('Solo que el río siempre había tenido a alguien más.'),
+    N('Y esta colina era solo mía.'),
+  ]},
+
+{ lead:['Seis meses.'],
+  xml:'Las notas siguen llegando, pero el tiempo entre una y otra se estira. Kenzo en el taller, ocupado, sin esperar.',
+  set:'taller', light:'dia', season:'otono',
+  cast:[{who:'kenzo', pose:'sit', at:'left'}, {who:'maestro', pose:'work', at:'right'}],
+  lines:[
+    N('A los seis meses las notas seguían llegando.'),
+    N('Pero el tiempo entre una y otra se había estirado.'),
+    N('Antes era una semana. Ahora era diez días. A veces doce.'),
+    N('Lo noté.'),
+    N('Y al día siguiente llegué al taller antes de que Hiroshi abriera.'),
+    N('Me puse a trabajar solo en algo que ya sabía hacer bien.'),
+    N('Las manos ocupadas ayudan.'),
+    N('Eso lo aprendí ese año.'),
+  ]},
+
+{ xml:'Un día en el mercado de Matsumoto, Kenzo pasa por un puesto de papel. Hojas de distintos grosores, algunas casi transparentes. Se detiene más tiempo del necesario.',
+  set:'matsumoto', light:'dia', season:'otono',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Un día, en el mercado, pasé frente a un puesto de papel.'),
+    N('Vendían hojas de distintos grosores, algunas casi transparentes.'),
+    N('Me detuve a verlas más tiempo del necesario.'),
+    N('Pensé que a Hana le habría encantado ese puesto.'),
+    N('Que probablemente habría pasado media hora ahí, comparando el grosor de cada hoja antes de decidir.'),
+    N('Me pregunté qué estaría haciendo en ese momento exacto.'),
+    N('Si estaría en el río. Si el perro seguiría metiéndose en problemas.'),
+    N('Compré dos hojas del papel más fino que tenían.'),
+    N('No sé bien para qué.'),
+    N('Las guardé en la cajita, junto con todo lo demás.'),
+  ]},
+
+{ lead:['Siete meses.'],
+  xml:'Nota más corta llegando. Sin el cierre habitual. Kenzo la lee, la guarda, va al taller.',
+  set:'cuarto', light:'noche', season:'otono',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('La nota de los siete meses fue más corta que las anteriores.'),
+    N('Me contó del torneo de arquería que había tenido su grupo.'),
+    N('Me contó del perro.'),
+    N('Y nada más.'),
+    N('Sin el espero que el trabajo vaya bien que siempre cerraba sus notas.'),
+    N('La leí dos veces buscando algo que quizás se me había pasado.'),
+    N('No encontré nada más.'),
+    N('La guardé.'),
+    N('Y al día siguiente llegué al taller antes de que Hiroshi abriera.'),
+    N('Me puse a trabajar solo en algo que ya sabía hacer bien.'),
+    N('Las manos ocupadas ayudan.'),
+    N('Eso lo aprendí ese año.'),
+  ]},
+
+{ lead:['Ocho meses. Nueve meses.'],
+  xml:'Hiroshi enseñando algo sobre la dirección de la madera. Kenzo escucha. Lo que aprende va más allá del oficio.',
+  set:'taller', light:'dia', season:'invierno',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Un día, mientras lijaba una pieza, Hiroshi se paró detrás de mí y me detuvo la mano.'),
+    {s:'Hiroshi', t:'Estás lijando contra la veta.'},
+    K('Se ve igual de cualquier forma.'),
+    {s:'Hiroshi', t:'Se ve igual ahora. En un año se va a notar.'},
+    K('¿Cómo se nota?'),
+    {s:'Hiroshi', t:'Se levanta. Se astilla con el tiempo. La madera tiene una dirección en la que quiere ir. Si trabajas contra esa dirección, te cuesta el doble y dura la mitad.'},
+    K('¿Y cómo sé hacia dónde quiere ir?'),
+    {s:'Hiroshi', t:'La miras. La tocas. Después de un tiempo, lo sabes sin pensarlo.'},
+    N('Seguí lijando, esta vez en la dirección correcta.'),
+    N('Esa noche, en mi cuarto, pensé en esa frase más de lo que pensé en cualquier otra cosa.'),
+    N('La madera tiene una dirección en la que quiere ir.'),
+    N('Pensé que la gente probablemente también.'),
+    N('Y que trabajar contra eso, en lo que fuera, costaba el doble y duraba la mitad.'),
+  ]},
+
+{ lead:['Diez meses. Once meses.'],
+  xml:'Kenzo con más responsabilidad. Daiki le encarga unas cajas. Primer trabajo completamente propio.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Para el mes diez, Hiroshi ya me dejaba trabajar piezas completas sin supervisión.'),
+    N('Y Daiki me pidió que le hiciera unas cajas para transportar sus piezas al mercado sin que se rompieran.'),
+    N('Fue el primer trabajo que hice por mi cuenta, sin que Hiroshi lo revisara primero.'),
+    N('Cuando Daiki las recibió, las probó cargándolas llenas, sacudiéndolas un poco.'),
+    {s:'Daiki', t:'Nada se rompió.'},
+    K('Esa era la idea.'),
+    {s:'Daiki', t:'¿Cuánto te debo?'},
+    K('Lo que te parezca justo.', '(sin saber bien qué cobrar)'),
+    {s:'Daiki', t:'Eso es lo peor que puedes decirle a alguien que está comprando.'},
+    N('Me pagó más de lo que yo hubiera pedido.'),
+    N('Esa noche guardé las monedas en un lugar separado de todo lo demás.'),
+    N('No porque fueran muchas.'),
+    N('Sino porque eran las primeras que había ganado yo solo, con algo que había hecho con mis propias manos, sin que nadie lo corrigiera.'),
+  ]},
+
+{ lead:['Un año.'],
+  xml:'Hiroshi revisa algo de Kenzo. Lo gira. Prueba las partes. Asiente más despacio que de costumbre.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Cumplí un año en Matsumoto sin darme mucha cuenta de cuándo pasó.'),
+    N('Hiroshi me dejó hacer un encargo completo de principio a fin esa semana, desde escoger la madera hasta entregarlo al cliente.'),
+    N('Cuando terminó, lo revisó como revisaba todo.'),
+    N('Lo giró. Pasó el dedo por las uniones. Lo puso en el suelo y empujó una esquina para ver si se tambaleaba.'),
+    N('No se tambaleó.'),
+    {s:'Hiroshi', t:'Bien.'},
+    K('¿Solo bien?'),
+    {s:'Hiroshi', t:'¿Qué esperabas? ¿Que llorara de la emoción?'},
+    N('Fue lo más parecido a un chiste que le escuché en todo el año.'),
+    N('Me reí más de lo que el chiste merecía.'),
+    N('Esa noche subí a mi colina y pensé que un año atrás no conocía a nadie aquí.'),
+    N('Ahora tenía un maestro que casi hacía chistes, dos amigos que me esperaban a comer, y una colina entera que consideraba mía.'),
+    N('No era Kuromi.'),
+    N('Pero era algo.'),
+    N('Y ese algo se sentía cada vez más como una vida de verdad.'),
+  ]},
+
+{ lead:['Trece meses.'],
+  xml:'La nota llega después de treinta y ocho días. Más corta. Con una línea diferente al final.',
+  set:'cuarto', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('La siguiente nota tardó treinta y ocho días en llegar.'),
+    N('Era la espera más larga hasta entonces.'),
+    N('Cuando llegó, decía que las hierbas de invierno habían sido difíciles de conseguir ese año.'),
+    N('Que el perro había aprendido a abrir la puerta de la cocina con el hocico.'),
+    N('Y al final, una sola línea distinta a las anteriores: espero que estés bien.'),
+    N('No espero que el trabajo vaya bien.'),
+    N('Espero que estés bien.'),
+    N('Me quedé pensando en esa diferencia más tiempo del razonable.'),
+    N('Quizás no significaba nada.'),
+    N('O quizás significaba que ya no sabía mucho de mi trabajo porque yo tampoco le contaba tanto.'),
+    N('Respondí algo corto también.'),
+    N('No porque quisiera que fuera corto.'),
+    N('Sino porque no encontré mucho más que decir que no hubiera dicho ya.'),
+  ]},
+
+{ lead:['Quince meses.'],
+  xml:'Kenzo construyendo algo propio en sus ratos libres: el mecanismo de bisagra que imaginó desde Kuromi. Hiroshi lo encuentra y lo revisa en silencio.',
+  set:'taller', light:'tarde', season:'otono',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Empecé a construir algo en mis ratos libres.'),
+    N('Un mecanismo de bisagra que había imaginado desde Kuromi, para una caja que se abriera sola al cierto ángulo sin necesitar las manos.'),
+    N('En Kuromi no tenía las herramientas finas que se necesitaban.'),
+    N('Aquí sí.'),
+    N('Un día Hiroshi llegó temprano y me encontró con las piezas regadas en mi mesa.'),
+    {s:'Hiroshi', t:'¿Qué es esto?'},
+    K('Una bisagra. Para que la caja se abra sola al inclinarla, sin tocar el broche.'),
+    N('La tomó. La giró. La inclinó varias veces, probando el mecanismo.'),
+    {s:'Hiroshi', t:'¿Para qué sirve?'},
+    K('No sé. Solo quería ver si funcionaba.'),
+    N('Me la devolvió.'),
+    {s:'Hiroshi', t:'Funciona.'},
+    N('Y siguió con lo suyo.'),
+    N('Pero esa tarde, sin que yo lo pidiera, dejó la pieza en el estante donde guardaba los trabajos que consideraba que valía la pena mostrar a los clientes.'),
+    N('Nunca me dijo que estaba orgulloso.'),
+    N('Pero ese estante era su forma de decirlo.'),
+  ]},
+
+{ lead:['Dieciocho meses.'],
+  xml:'Kenzo manda una nota. Pasan semanas. No llega respuesta. Va al mercado, compra madera, empieza algo nuevo.',
+  set:'matsumoto', light:'dia', season:'invierno',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Mandé una nota en el mes dieciocho.'),
+    N('No llegó respuesta.'),
+    N('Esperé tres semanas.'),
+    N('Y en vez de mandar otra, fui al mercado de maderas y encontré una pieza de cerezo que llevaba meses buscando.'),
+    N('La compré. Volví al taller. Empecé algo nuevo con ella.'),
+    N('No porque hubiera dejado de importarme la respuesta.'),
+    N('Sino porque entendí, sin decidirlo del todo, que mi vida en Matsumoto no podía quedarse esperando una carta para seguir.'),
+    N('La madera tiene una dirección en la que quiere ir.'),
+    N('Yo también.'),
+  ]},
+
+{ lead:['Veinte meses.'],
+  xml:'Kenzo en el puesto de especias de Matsumoto. Esta vez las huele. Distingue varias mal conservadas. Sin que nadie le diga nada.',
+  set:'matsumoto', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('Un martes, sin pensarlo, olí las especias de un puesto que pasaba seguido.'),
+    N('Y supe, sin que nadie me dijera nada, que tres de ellas estaban mal conservadas.'),
+    N('Se lo dije al vendedor.'),
+    N('Me miró como si fuera raro que alguien notara eso.'),
+    N('Caminé de vuelta al taller riéndome solo.'),
+    N('Pensando que llevaba dos años sin darme cuenta de cuánto había aprendido sin querer.'),
+    N('Pensé en quién me había enseñado a fijarme en eso.'),
+    N('Sin saber que lo estaba enseñando.'),
+  ]},
+
+{ lead:['Veintiún meses.', 'La última nota.'],
+  xml:'Una nota llega. Dos líneas. Kenzo la lee, la guarda, no manda respuesta.',
+  set:'cuarto', light:'noche', season:'verano',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}], prop:'note',
+  lines:[
+    N('La última nota que recibí de Hana llegó en el mes veintiuno.'),
+    N('Eran dos líneas.'),
+    N('Las hierbas de otoño habían sido buenas ese año.'),
+    N('Nada más.'),
+    N('La guardé en la cajita con las demás.'),
+    N('No mandé respuesta.'),
+    N('No porque estuviera molesto.'),
+    N('Sino porque, sinceramente, ya no sabía qué decirle que tuviera sentido mandar a esa distancia.'),
+    N('Ella tampoco volvió a escribir.'),
+    N('Y ninguno de los dos lo declaró en voz alta.'),
+    N('Así terminan algunas cosas.'),
+    N('No con una conversación que las cierre.'),
+    N('Solo se acaban.'),
+    N('Y uno lo entiende después, viendo hacia atrás.'),
+  ]},
+
+{ lead:['Los últimos meses en Matsumoto.'],
+  xml:'Kenzo en el taller — encargos propios, reconocimiento. Daiki y Yui esperándolo a comer. La colina al atardecer.',
+  set:'taller', light:'dia', season:'otono',
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Los últimos meses en Matsumoto fueron los más llenos de todos.'),
+    N('Tenía encargos propios casi todas las semanas.'),
+    N('Daiki y Yui ya eran, sin que lo planeara, mis amigos más cercanos en la ciudad.'),
+    N('Subía a mi colina cada vez que el trabajo me lo permitía.'),
+    N('Y Hiroshi me había empezado a tratar diferente, no como aprendiz sino casi como alguien con quien discutir un problema de diseño.'),
+  ]},
+
+{ xml:'Kenzo, Daiki y Yui comiendo juntos por última vez antes de que Kenzo vuelva a Kuromi.',
+  set:'matsumoto', light:'tarde', season:'otono',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    {s:'Daiki', t:'¿Vas a volver alguna vez?'},
+    K('No sé. Probablemente, para comprar madera.'),
+    {s:'Yui', t:'Eso no es lo que pregunté.'},
+    K('No sé. Mi vida está en Kuromi. Mi padre, el taller.', '(piensa)'),
+    {s:'Daiki', t:'También está aquí, ahora. Un poco.'},
+    N('Tenía razón.'),
+    N('Una parte de mi vida se había quedado construida en esta ciudad, en este callejón, sin que yo lo planeara.'),
+    N('Eso me hizo entender algo que no había pensado antes:'),
+    N('Que uno puede tener más de un lugar al que pertenece.'),
+    N('Y que volver a uno no significa abandonar el otro.'),
+  ]},
+
+{ lead:['El último día en Matsumoto.'],
+  xml:'Hiroshi entregando a Kenzo el formón de cerezo. Un gesto sobrio. El último día.',
+  set:'taller', light:'dia', season:'otono',
+  cast:[{who:'maestro', pose:'stand', at:'right'}, {who:'kenzo', pose:'stand', at:'left'}],
+  lines:[
+    N('El último día, Hiroshi me llamó antes de que me fuera.'),
+    N('Sacó algo de un cajón que nunca había visto abierto.'),
+    N('Un formón pequeño, de madera de cerezo, con el filo más fino que había visto en todo el taller.'),
+    {s:'Hiroshi', t:'Toma.'},
+    K('¿Por qué me lo da?'),
+    {s:'Hiroshi', t:'Porque ya no necesitas que te corrija cada cosa que haces. Y un artesano que ya no necesita corrección necesita herramientas propias.'},
+    N('No dijo nada más.'),
+    N('Y yo tampoco supe qué decir.'),
+    N('Así que solo guardé el formón en mi mochila, junto a la cajita.'),
+    N('Y le hice una reverencia más profunda de la que probablemente esperaba.'),
+    N('Él asintió, una sola vez, y volvió a su trabajo.'),
+    N('Como si nada hubiera pasado.'),
+    N('Pero algo había pasado.'),
+  ]},
+
+{ lead:['El camino de vuelta a Kuromi.', 'Primavera.', 'Año 1805.'],
+  xml:'Kenzo en el camino de regreso. Mochila al hombro. Montañas, campos de arroz, cerezos en primavera.',
+  set:'camino', light:'dia', season:'primavera', opts:{tree:'sakura'},
+  cast:[{who:'kenzo', pose:'bag', at:'center'}],
+  lines:[
+    N('Caminé de vuelta a Kuromi en primavera, dos años después de haber hecho ese mismo camino al revés.'),
+    N('El paisaje era el mismo: las mismas montañas, los mismos campos.'),
+    N('Pero yo notaba cosas que antes no había notado.'),
+    N('El tipo de árbol en cada tramo del camino. La calidad de la piedra en un puente viejo.'),
+    N('Hiroshi me había enseñado a mirar de una forma distinta.'),
+    N('Y esa forma de mirar no se quedó en el taller.'),
+    N('Vino conmigo en el camino.'),
+  ]},
+
+{ xml:'Kenzo entrando a Kuromi. La aldea igual. El mercado. El señor Mori. El humo de los fogones de la mañana.',
+  set:'vista', light:'amanecer', season:'primavera',
+  cast:[{who:'kenzo', pose:'bag', at:'center'}],
+  lines:[
+    N('La aldea olía igual.'),
+    N('Eso fue lo primero que noté.'),
+    N('El humo de los fogones de la mañana, mezclado con tierra húmeda y madera.'),
+    N('El señor Mori estaba acomodando su puesto de especias, exactamente como cuando me fui.'),
+    N('Me vio pasar y levantó la mano en saludo, sin sorpresa.'),
+    N('Como si solo hubiera ido al pueblo de al lado por unos días.'),
+    N('La aldea no había cambiado.'),
+    N('Yo sí.'),
+    N('Y eso hacía que todo se viera igual pero se sintiera nuevo.'),
+    N('Que es una sensación muy particular.'),
+    N('Y no del todo mala.'),
+  ]},
+
+{ xml:'El taller del padre. Los dos juntos. El padre lo mira trabajar el primer día y asiente. Sin decir mucho.',
+  set:'taller', light:'dia', season:'primavera',
+  cast:[{who:'padre', pose:'work', at:'right'}, {who:'kenzo', pose:'sit', at:'left'}],
+  lines:[
+    N('Mi padre me puso a trabajar el primer día.'),
+    N('Sin preguntar nada.'),
+    N('A la hora miró lo que había hecho.'),
+    N('Asintió.'),
+    N('Que de parte de mi padre era bastante.'),
+    N('Aprendí a leer eso de alguien.'),
+    N('Y resultó que también funcionaba con él.'),
+  ]},
+
+{ xml:'El río. Kenzo va solo los primeros días. Se sienta un poco más abajo que antes, en un lugar nuevo de la misma orilla.',
+  set:'rio', light:'tarde', season:'primavera', opts:{sun:true, tree:'sakura'},
+  cast:[{who:'kenzo', pose:'sit', at:'center'}],
+  lines:[
+    N('Fui al río al tercer día de haber vuelto.'),
+    N('No fui directo al lugar de siempre.'),
+    N('Caminé un poco más, hasta un punto más abajo de la orilla, sin decidirlo conscientemente.'),
+    N('Me senté ahí.'),
+    N('El río se veía igual. El mismo sonido, la misma corriente.'),
+    N('Pero ese lugar específico nunca lo habíamos compartido.'),
+    N('Era mío.'),
+    N('De ahora.'),
+    N('No de antes.'),
+  ]},
+
+{ xml:'Kenzo en la aldea los días siguientes. Saludando a todos, retomando su lugar. Contento de estar de vuelta. Sin peso encima.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  lines:[
+    N('La aldea me recibió como siempre.'),
+    N('Como si no hubiera pasado gran cosa.'),
+    N('Que era un cumplido.'),
+    N('Significa que uno todavía pertenece.'),
+    N('Respondí preguntas. Saludé a todos.'),
+    N('Volví a ser parte del lugar.'),
+    N('Solo que ahora era parte de otra manera.'),
+    N('Con más de lo que tenía antes.'),
+  ]},
+
+{ lead:['Un mes de vuelta en Kuromi.', 'El mercado.', 'Una mañana cualquiera.'],
+  xml:'Kenzo en el mercado comprando materiales. Tranquilo, en lo suyo. Al fondo, frente al puesto de especias del señor Mori, la ve.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'left'}],
+  lines:[
+    N('No la estaba buscando.'),
+    N('Solo estaba comprando madera.'),
+    N('Y entonces la vi.'),
+  ]},
+
+{ xml:'Hana de espaldas frente al puesto de especias. El kimono gris. El criterio absoluto de siempre. El perro amarrado cerca. Y a su lado, Hiro, sosteniendo la cesta mientras ella evalúa cada especia.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'back', at:'left'}, {who:'hiro', pose:'stand', at:'right'}], dog:{pos:'right', dx:-50},
+  lines:[
+    N('Estaba frente al puesto del señor Mori.'),
+    N('Rechazando especias.'),
+    N('Como la primera vez. Como siempre.'),
+    N('Solo que esta vez no estaba sola.'),
+    N('Un hombre estaba a su lado, sosteniendo una cesta.'),
+    N('Esperando sin ningún apuro.'),
+    N('Como alguien que ya sabe perfectamente cuánto tiempo toma esto.'),
+  ]},
+
+{ xml:'Kenzo observando. Hana muestra algo a Hiro. Él lo recibe. Dice algo. Ella lo corrige. Él acepta sin drama. Siguen.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'stand', at:'left'}, {who:'hiro', pose:'stand', at:'right'}], dog:{pos:'right', dx:-50},
+  lines:[
+    N('Lo reconocí. Era Hiro, el hijo del herrero. Lo había visto antes por la aldea, de lejos.'),
+    N('Hana levantó una especia, la olió, frunció el ceño, y se la mostró a él.'),
+    N('Él la olió también. Dijo algo.'),
+    N('Ella negó con la cabeza y dijo algo más.'),
+    N('Él se rió, levemente, y aceptó lo que fuera que ella había dicho, sin discutir.'),
+    N('Vi eso completo, de principio a fin, sin moverme.'),
+    N('No porque quisiera espiar.'),
+    N('Sino porque mis pies simplemente no se movieron por un momento.'),
+  ]},
+
+{ xml:'Hana guarda su lista con los mismos dobleces de siempre. Los dos se van caminando, el perro adelante. Kenzo los ve alejarse.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'hana', pose:'back', at:'left'}, {who:'hiro', pose:'back', at:'right'}], dog:{pos:'center', dx:10},
+  lines:[
+    N('Guardó la lista en el bolsillo.'),
+    N('Con los mismos dobleces de siempre.'),
+    N('Y se fueron.'),
+    N('El perro adelante.'),
+    N('Él a su lado.'),
+    N('Sin necesitar llenar el silencio entre los dos.'),
+    N('Caminando como dos personas que llevan tiempo aprendiendo a moverse en el mismo paso.'),
+    N('Los vi alejarse hasta que se perdieron entre la gente.'),
+    N('El mercado siguió.'),
+    N('El señor Mori acomodó sus especias.'),
+    N('Alguien pasó cargando sacos.'),
+    N('Todo siguió, como siempre sigue.'),
+  ]},
+
+{ xml:'Kenzo retoma su camino. Va a comprar la madera que había ido a buscar.',
+  set:'mercado', light:'dia', season:'primavera',
+  cast:[{who:'kenzo', pose:'stand', at:'center'}],
+  breakText:['Dos años fuera.', 'Un mes de vuelta.', 'Y la vida ya había seguido sin él.', 'Como debía.', 'Como siempre hace.'],
+  lines:[
+    N('Seguí hacia la madera que había ido a comprar.'),
+    N('Porque para eso había ido.'),
+    N('Y la madera seguía ahí.'),
+    N('Esperando.'),
+    N('Como esperan las cosas que no tienen otra opción.'),
+    N('Las personas son diferentes.'),
+    N('Las personas siguen.'),
+    N('Y eso está bien.'),
+    N('Aunque no siempre se sienta bien.'),
+  ]},
+
+];
+
+window.STORY = STORY;
+window.STORY_COMPLETE = false;
